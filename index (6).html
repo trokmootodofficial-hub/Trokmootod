@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<!-- ================================================================
+     ⚠️⚠️⚠️  วาง FIREBASE CONFIG ตรงนี้  ⚠️⚠️⚠️
+     อยู่บนสุดของไฟล์แล้ว ไม่ต้องหาที่อื่น
+     ลบก้อน { ... } ด้านล่าง แล้ววาง object จาก Firebase Console ทับได้เลย
+     (Console > Project settings > Your apps > Web app > ก้อน firebaseConfig)
+     ตราบใดที่ยังเป็น PASTE_HERE แอปจะรันโหมด Local ปกติ ไม่พัง
+     ================================================================ -->
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBqjqNY259fR0pbvmc6t5pX84fOjoKTV7U",
+  authDomain: "mootod-shop.firebaseapp.com",
+  projectId: "mootod-shop",
+  storageBucket: "mootod-shop.firebasestorage.app",
+  messagingSenderId: "896579826225",
+  appId: "1:896579826225:web:f22c4aae176230cc6f5b10"
+};
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2B2118">
+<title>หมูทอดบัญชี — รายรับรายจ่าย + สต๊อก</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#FBF6EE; --card:#FFFFFF; --ink:#2B2118; --muted:#8A7B6C;
+  --gold:#E8930C; --gold-soft:#FDEBD0; --brown:#6B3F19;
+  --green:#2E7D32; --green-soft:#E3F1E4; --red:#C62828; --red-soft:#FBE4E4;
+  --blue:#1565C0; --blue-soft:#E3EDF9; --line:#EFE6D8;
+  --r:14px; --shadow:0 2px 10px rgba(43,33,24,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:76px}
+h1,h2,h3,.num{font-family:'Prompt',sans-serif}
+button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:inherit}
+input,select,textarea{font-family:inherit;font-size:16px;width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold)}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:12px 0 5px}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px}
+header{background:var(--ink);color:#fff;padding:14px 0 12px;position:sticky;top:0;z-index:20}
+header .wrap{display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo .pig{width:38px;height:38px;background:var(--gold);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px}
+.logo h1{font-size:17px;font-weight:600;line-height:1.1}
+.logo small{display:block;font-family:'Sarabun';font-weight:400;font-size:11px;opacity:.65}
+.dbtag{font-size:11px;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.12)}
+.dbtag.on{background:var(--green);color:#fff}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:30}
+nav .wrap{display:flex}
+nav button{flex:1;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:11px;font-weight:600}
+nav button .ic{font-size:20px;line-height:1}
+nav button.act{color:var(--brown)}
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin:14px 0}
+.card h2{font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sub{font-size:12px;color:var(--muted)}
+.kpi-num{font-size:34px;font-weight:700;letter-spacing:-.5px}
+.kpi-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.bar{height:14px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:var(--gold);transition:width .5s}
+.bar i.ok{background:var(--green)}
+.badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+.b-ok{background:var(--green-soft);color:var(--green)}
+.b-warn{background:var(--gold-soft);color:#A66300}
+.b-bad{background:var(--red-soft);color:var(--red)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stat{background:var(--bg);border-radius:10px;padding:10px 12px}
+.stat .v{font-family:'Prompt';font-weight:600;font-size:17px}
+.stat .l{font-size:11.5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 15px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-weight:600;font-size:14px;color:var(--muted)}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.seg{display:flex;background:var(--line);border-radius:12px;padding:4px;gap:4px}
+.seg button{flex:1;padding:10px;border-radius:9px;font-weight:700;font-size:15px;color:var(--muted)}
+.seg button.on-in{background:var(--green);color:#fff}
+.seg button.on-ex{background:var(--red);color:#fff}
+.btn{display:block;width:100%;padding:14px;border-radius:12px;background:var(--gold);color:#fff;font-weight:700;font-size:16px;font-family:'Prompt';box-shadow:0 3px 0 #B87100}
+.btn:active{transform:translateY(2px);box-shadow:none}
+.btn.sm{padding:8px 14px;width:auto;display:inline-block;font-size:13px;box-shadow:none;border-radius:9px}
+.btn.ghost{background:#fff;color:var(--brown);border:1.5px solid var(--brown);box-shadow:none}
+.btn.danger{background:var(--red);box-shadow:0 3px 0 #8E1C1C}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .dot{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.row .mid{flex:1;min-width:0}
+.row .t{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:11.5px;color:var(--muted)}
+.row .amt{font-family:'Prompt';font-weight:600;font-size:15px}
+.amt.in{color:var(--green)} .amt.ex{color:var(--red)}
+.del{color:var(--muted);font-size:17px;padding:6px}
+.slvl{height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+.slvl i{display:block;height:100%;border-radius:99px}
+.alert-item{background:var(--red-soft);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13.5px}
+.hbar{margin:9px 0}
+.hbar .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
+.hbar .tr{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.hbar .tr i{display:block;height:100%;border-radius:99px}
+.modal-bg{position:fixed;inset:0;background:rgba(43,33,24,.5);z-index:50;display:none;align-items:flex-end;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#fff;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px 26px;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:16px;margin-bottom:6px}
+.formula{background:var(--blue-soft);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--blue);margin-top:10px;line-height:1.6}
+.tabpage{display:none}.tabpage.show{display:block}
+.empty{text-align:center;color:var(--muted);padding:24px 0;font-size:13.5px}
+.mini{font-size:12px;color:var(--muted);line-height:1.5}
+.right{text-align:right}.mt{margin-top:12px}
+.count-row{display:grid;grid-template-columns:1fr 90px 100px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.count-row input{padding:8px;text-align:center;font-family:'Prompt'}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header><div class="wrap">
+  <div class="logo">
+    <div class="pig">🐷</div>
+    <h1 id="shopName">ร้านหมูทอด<small id="hdrDate"></small></h1>
+  </div>
+  <span class="dbtag" id="dbTag">Local</span>
+</div></header>
+
+<main class="wrap">
+
+<!-- ============ DASHBOARD ============ -->
+<section class="tabpage show" id="pg-dash">
+  <div class="card">
+    <h2>เป้าวันนี้ (จุดคุ้มทุน) <span class="badge" id="kpiBadge">—</span></h2>
+    <div class="kpi-row">
+      <div><div class="kpi-num" id="kpiPct">0%</div><div class="sub">ของจุดคุ้มทุน <b id="kpiTarget">—</b> บาท/วัน</div></div>
+      <div class="right"><div class="num" style="font-size:20px;font-weight:600" id="kpiNet">฿0</div><div class="sub">ยอดสุทธิ (หลังหัก GP)</div></div>
+    </div>
+    <div class="bar"><i id="kpiBar" style="width:0%"></i></div>
+    <div class="grid3 mt">
+      <div class="stat"><div class="v" id="dGross">฿0</div><div class="l">ยอดขายรวม</div></div>
+      <div class="stat"><div class="v" id="dMat">฿0</div><div class="l" id="dMatL">ต้นทุนของที่ใช้</div></div>
+      <div class="stat"><div class="v" id="dProfit">฿0</div><div class="l">กำไรขั้นต้น</div></div>
+    </div>
+    <div class="mini mt" id="dNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>ช่องทางขายวันนี้</h2>
+    <div id="dashChannels"><div class="empty">ยังไม่มีรายรับวันนี้</div></div>
+  </div>
+
+  <div class="card">
+    <h2>⚠️ สต๊อกต้องสั่งเพิ่ม <span class="sub" id="alertCount"></span></h2>
+    <div id="stockAlerts"><div class="empty">สต๊อกยังไม่ถึงจุดสั่งซื้อ 👍</div></div>
+  </div>
+
+  <div class="card">
+    <h2>เดือนนี้</h2>
+    <div class="grid3">
+      <div class="stat"><div class="v" id="mIn">฿0</div><div class="l">รายรับ</div></div>
+      <div class="stat"><div class="v" id="mEx">฿0</div><div class="l">รายจ่าย+GP</div></div>
+      <div class="stat"><div class="v" id="mNet">฿0</div><div class="l">กำไรสุทธิ</div></div>
+    </div>
+    <div class="mini mt" id="mWaste"></div>
+  </div>
+</section>
+
+<!-- ============ ENTRY ============ -->
+<section class="tabpage" id="pg-entry">
+  <div class="card">
+    <div class="seg">
+      <button id="segIn" class="on-in" onclick="setEntryType('in')">＋ รายรับ</button>
+      <button id="segEx" onclick="setEntryType('ex')">－ รายจ่าย</button>
+    </div>
+
+    <label>จำนวนเงิน (บาท)</label>
+    <input type="number" id="eAmt" inputmode="decimal" placeholder="0" style="font-family:'Prompt';font-size:26px;font-weight:600;text-align:center">
+
+    <div id="incomeBox">
+      <label>ช่องทาง</label>
+      <div class="chips" id="chChips"></div>
+    </div>
+
+    <div id="expenseBox" style="display:none">
+      <label>ประเภทรายจ่าย</label>
+      <div class="chips" id="catChips"></div>
+
+      <div id="matBox" style="display:none">
+        <label>ของที่ซื้อ (รับเข้าสต๊อก + คิดต้นทุนเฉลี่ยให้)</label>
+        <select id="eItem"></select>
+        <div class="grid2">
+          <div><label>จำนวนที่ซื้อ</label><input type="number" id="eQty" inputmode="decimal" placeholder="เช่น 10"></div>
+          <div><label>หน่วย</label><input id="eUnit" disabled></div>
+        </div>
+        <div class="mini mt" id="avgPreview"></div>
+      </div>
+
+      <div id="fixBox" style="display:none">
+        <label>จ่ายรายการไหน (ไม่บังคับ)</label>
+        <select id="eFixItem"></select>
+        <div class="mini mt">💡 นี่คือบันทึก "จ่ายจริง" — เป้า KPI ใช้ยอด Fix Cost รายเดือนจากหน้าตั้งค่า ไม่เกี่ยวกัน</div>
+      </div>
+    </div>
+
+    <label>โน้ต (ไม่บังคับ)</label>
+    <input id="eNote" placeholder="เช่น ค่าเช่าเดือน ก.ค.">
+    <div class="mt"><button class="btn" onclick="saveEntry()">บันทึก</button></div>
+  </div>
+
+  <div class="card">
+    <h2>รายการวันนี้ <span class="sub" id="todayCount"></span></h2>
+    <div id="todayList"><div class="empty">ยังไม่มีรายการ</div></div>
+  </div>
+</section>
+
+<!-- ============ STOCK ============ -->
+<section class="tabpage" id="pg-stock">
+  <div class="card">
+    <h2>สต๊อก
+      <span>
+        <button class="btn sm ghost" onclick="openCountModal()">📋 นับท้ายวัน</button>
+        <button class="btn sm" onclick="openItemModal()">＋ เพิ่ม</button>
+      </span>
+    </h2>
+    <div class="chips" id="icatFilter" style="margin-bottom:10px"></div>
+    <div id="stockList"><div class="empty">ยังไม่มีรายการสต๊อก — กด "เพิ่ม"</div></div>
+    <div class="formula">
+      📐 <b>สูตรที่ระบบใช้</b><br>
+      ต้นทุนเฉลี่ย (Moving Avg) = (ของเดิม×ต้นทุนเดิม + เงินที่ซื้อ) ÷ ของรวม — รองรับราคาของสดที่แกว่ง<br>
+      Safety Stock = 1.65 × SD(ใช้ต่อวัน) × √Lead time (มั่นใจ 95%)<br>
+      จุดสั่งซื้อ = ใช้เฉลี่ย/วัน × Lead time + Safety Stock<br>
+      <span style="opacity:.75">การใช้/วัน เรียนรู้จาก เบิกใช้ + ของเสีย + นับท้ายวัน ย้อนหลัง 30 วัน — วิธีที่ง่ายสุด: <b>นับท้ายวันอย่างเดียวก็พอ</b> ระบบคำนวณการใช้ให้เอง</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ REPORT ============ -->
+<section class="tabpage" id="pg-report">
+  <div class="card">
+    <h2>รายงานเดือน <input type="month" id="repMonth" style="width:auto;padding:6px 10px;font-size:14px" onchange="render()"></h2>
+    <div class="grid3">
+      <div class="stat"><div class="v" id="rIn">฿0</div><div class="l">รายรับรวม</div></div>
+      <div class="stat"><div class="v" id="rGP">฿0</div><div class="l">โดนหัก GP</div></div>
+      <div class="stat"><div class="v" id="rNet">฿0</div><div class="l">กำไรสุทธิ</div></div>
+    </div>
+    <div class="grid2 mt">
+      <div class="stat"><div class="v" id="rMat">฿0</div><div class="l">ต้นทุนของที่ใช้จริง (จากสต๊อก)</div></div>
+      <div class="stat"><div class="v" id="rWaste" style="color:var(--red)">฿0</div><div class="l">มูลค่าของเสีย/ทิ้ง</div></div>
+    </div>
+    <div class="mini mt">กำไรสุทธิ = รายรับ − GP − รายจ่ายที่บันทึกทั้งหมด · "ต้นทุนของที่ใช้จริง" มาจากการตัดสต๊อก ใช้เช็คว่า % วัตถุดิบจริงตรงกับที่ตั้งไว้ไหม</div>
+  </div>
+  <div class="card"><h2>รายรับตามช่องทาง</h2><div id="repChannels"><div class="empty">ไม่มีข้อมูล</div></div></div>
+  <div class="card"><h2>รายจ่ายตามประเภท</h2><div id="repCats"><div class="empty">ไม่มีข้อมูล</div></div></div>
+  <div class="card"><h2>ส่งออกข้อมูล</h2>
+    <div class="grid2">
+      <button class="btn ghost" onclick="exportCSV()">⬇ CSV เดือนนี้</button>
+      <button class="btn ghost" onclick="exportJSON()">⬇ สำรองทั้งหมด</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SETTINGS ============ -->
+<section class="tabpage" id="pg-set">
+  <div class="card">
+    <h2>Fix Cost รายเดือน <span class="sub">รวม <b id="fixTotal">฿0</b>/เดือน</span></h2>
+    <div id="fixList"><div class="empty">ยังไม่มีรายการ — เพิ่มด้านล่าง</div></div>
+    <div class="grid3 mt">
+      <div style="grid-column:span 2"><input id="newFixName" placeholder="เช่น ค่าเช่า / เงินเดือนลูกจ้างประจำ"></div>
+      <div><input type="number" id="newFixAmt" inputmode="decimal" placeholder="บาท/เดือน"></div>
+    </div>
+    <div class="mt"><button class="btn ghost sm" onclick="addFixItem()">＋ เพิ่มรายการ Fix Cost</button></div>
+    <div class="mini mt">💡 ค่าแรง<b>ประจำ</b> (เงินเดือน) ใส่ตรงนี้ · ค่าแรง<b>รายวัน</b>ที่ผันตามยอด บันทึกในรายจ่ายหมวด "ค่าแรง" ไม่ต้องใส่ตรงนี้</div>
+  </div>
+
+  <div class="card">
+    <h2>ตั้งค่าร้าน & จุดคุ้มทุน</h2>
+    <label>ชื่อร้าน</label><input id="sName">
+    <div class="grid2">
+      <div><label>วันเปิดร้าน/เดือน</label><input type="number" id="sDays" inputmode="numeric" placeholder="30"></div>
+      <div><label>% ต้นทุนวัตถุดิบ (COGS)</label><input type="number" id="sCogs" inputmode="decimal" placeholder="55"></div>
+    </div>
+    <div class="formula">
+      🎯 <b>จุดคุ้มทุน/วัน = (Fix Cost รวม ÷ วันเปิด) ÷ (1 − COGS%)</b><br>
+      <span id="bePreview">—</span><br>
+      <span style="opacity:.75">พอมีข้อมูลจริงจากสต๊อกสัก 2-4 สัปดาห์ ไปดู "ต้นทุนของที่ใช้จริง" ในรายงาน แล้วกลับมาปรับ % นี้ให้ตรงความจริง</span>
+    </div>
+    <div class="mt"><button class="btn" onclick="saveSettings()">บันทึกตั้งค่า</button></div>
+  </div>
+
+  <div class="card">
+    <h2>ช่องทางขาย & ค่า GP</h2>
+    <div id="chList"></div>
+    <div class="grid3 mt">
+      <div style="grid-column:span 2"><input id="newChName" placeholder="ชื่อช่องทาง เช่น Robinhood"></div>
+      <div><input type="number" id="newChGP" placeholder="GP %"></div>
+    </div>
+    <div class="mt"><button class="btn ghost sm" onclick="addChannel()">＋ เพิ่มช่องทาง</button></div>
+  </div>
+
+  <div class="card">
+    <h2>เชื่อมต่อ Firebase</h2>
+    <div class="mini" id="dbInfo"></div>
+    <div id="fbSetup">
+      <label>วาง Firebase config (JSON หรือ JS object จากหน้า Project settings)</label>
+      <textarea id="fbCfg" rows="5" placeholder='{"apiKey":"...","authDomain":"xxx.firebaseapp.com","projectId":"xxx","appId":"..."}'></textarea>
+      <div class="mt"><button class="btn" onclick="connectFB()">เชื่อมต่อ Firebase</button></div>
+      <div class="mini mt">ขั้นตอนใน Firebase Console: 1) สร้าง project → 2) Build > Firestore Database > Create (production mode) → 3) Build > Authentication > เปิด Anonymous → 4) Project settings > Your apps > Web app → copy config มาวาง<br>Rules: <code>allow read, write: if request.auth != null;</code></div>
+    </div>
+    <div class="mt grid2">
+      <button class="btn ghost" onclick="importJSON()">⬆ กู้คืน JSON</button>
+      <button class="btn ghost" id="fbDisc" style="display:none" onclick="disconnectFB()">ตัดการเชื่อมต่อ</button>
+    </div>
+    <input type="file" id="impFile" accept=".json" style="display:none" onchange="doImport(this)">
+  </div>
+</section>
+</main>
+
+<nav><div class="wrap">
+  <button class="act" data-pg="dash" onclick="go('dash',this)"><span class="ic">📊</span>หน้าหลัก</button>
+  <button data-pg="entry" onclick="go('entry',this)"><span class="ic">✏️</span>บันทึก</button>
+  <button data-pg="stock" onclick="go('stock',this)"><span class="ic">📦</span>สต๊อก</button>
+  <button data-pg="report" onclick="go('report',this)"><span class="ic">📈</span>รายงาน</button>
+  <button data-pg="set" onclick="go('set',this)"><span class="ic">⚙️</span>ตั้งค่า</button>
+</div></nav>
+
+<!-- item modal -->
+<div class="modal-bg" id="itemModal"><div class="modal">
+  <h3 id="imTitle">เพิ่มของเข้าระบบสต๊อก</h3>
+  <input type="hidden" id="imId">
+  <label>ชื่อ</label><input id="imName" placeholder="เช่น หมูสามชั้น / ถุงหิ้ว / น้ำมันปาล์ม">
+  <label>หมวด</label>
+  <div class="chips" id="imCatChips"></div>
+  <div class="grid2">
+    <div><label>หน่วย</label><input id="imUnit" placeholder="กก. / แพ็ค / ลิตร"></div>
+    <div><label>ต้นทุนเฉลี่ย/หน่วย</label><input type="number" id="imAvg" inputmode="decimal"></div>
+  </div>
+  <div class="grid3">
+    <div><label>คงเหลือตอนนี้</label><input type="number" id="imQty" inputmode="decimal"></div>
+    <div><label>Lead time (วัน)</label><input type="number" id="imLead" inputmode="numeric" placeholder="1"></div>
+    <div><label>สั่งให้พอ (วัน)</label><input type="number" id="imCover" inputmode="numeric" placeholder="3"></div>
+  </div>
+  <div class="mini mt">Lead time = สั่งแล้วกี่วันของถึง · ต้นทุนเฉลี่ยจะอัปเดตเองทุกครั้งที่ซื้อเข้า แก้มือได้ถ้าตัวเลขเพี้ยน</div>
+  <div class="grid2 mt">
+    <button class="btn ghost" onclick="closeModal('itemModal')">ยกเลิก</button>
+    <button class="btn" onclick="saveItem()">บันทึก</button>
+  </div>
+  <div class="mt" id="imDelWrap" style="display:none"><button class="btn danger" onclick="deleteItem()">ลบรายการนี้</button></div>
+</div></div>
+
+<!-- use/waste modal -->
+<div class="modal-bg" id="useModal"><div class="modal">
+  <h3 id="umTitle">เบิกใช้</h3>
+  <input type="hidden" id="umId">
+  <label>จำนวน</label><input type="number" id="umQty" inputmode="decimal" style="font-family:'Prompt';font-size:24px;text-align:center">
+  <div class="grid2 mt">
+    <button class="btn" onclick="saveUse('out')">✅ เบิกใช้</button>
+    <button class="btn danger" onclick="saveUse('waste')">🗑 ของเสีย/ทิ้ง</button>
+  </div>
+  <div class="mt"><button class="btn ghost" onclick="closeModal('useModal')" style="width:100%">ยกเลิก</button></div>
+  <div class="mt"><h3 style="font-size:14px">ประวัติล่าสุด</h3><div id="umHist"></div></div>
+</div></div>
+
+<!-- stock count modal -->
+<div class="modal-bg" id="countModal"><div class="modal">
+  <h3>📋 นับสต๊อกท้ายวัน</h3>
+  <div class="mini">นับของจริงแล้วกรอกช่องขวา — ระบบคำนวณ "ใช้ไปเท่าไหร่" ให้เอง (ยกมา + ซื้อเข้า − นับได้) ช่องไหนไม่นับ เว้นว่างไว้</div>
+  <div class="count-row" style="border-bottom:2px solid var(--ink);font-size:12px;font-weight:700;color:var(--muted)"><span>รายการ</span><span class="right">ในระบบ</span><span class="right">นับได้จริง</span></div>
+  <div id="countList"></div>
+  <div class="grid2 mt">
+    <button class="btn ghost" onclick="closeModal('countModal')">ยกเลิก</button>
+    <button class="btn" onclick="saveCount()">บันทึกผลนับ</button>
+  </div>
+</div></div>
+
+<script>
+/* FIREBASE_CONFIG ถูกย้ายไปไว้บนสุดของไฟล์แล้ว (บรรทัดที่ ~10) */
+
+const LS_KEY='mootod_v2', FB_KEY='mootod_fbcfg';
+const CATS=[{id:'mat',n:'ซื้อของเข้าสต๊อก',ic:'🛒'},{id:'labor',n:'ค่าแรงรายวัน',ic:'👷'},{id:'fix',n:'จ่าย Fix Cost',ic:'🏠'},{id:'other',n:'อื่นๆ',ic:'📎'}];
+const ICATS=[{id:'fresh',n:'ของสด',ic:'🥩'},{id:'dry',n:'ของแห้ง/เครื่องปรุง',ic:'🧂'},{id:'pack',n:'บรรจุภัณฑ์',ic:'🛍️'},{id:'supply',n:'ของใช้สิ้นเปลือง',ic:'🧴'}];
+const DEF_SETTINGS={shopName:'ร้านหมูทอด',openDays:30,cogsPct:55,fixedItems:[],
+  channels:[{id:'cash',n:'เงินสด',gp:0,ic:'💵'},{id:'transfer',n:'เงินโอน',gp:0,ic:'📱'},
+            {id:'grab',n:'Grab',gp:30,ic:'🛵'},{id:'lineman',n:'LINE MAN',gp:30,ic:'🛵'},
+            {id:'shopee',n:'ShopeeFood',gp:30,ic:'🛵'}]};
+
+let S={settings:structuredClone(DEF_SETTINGS),tx:[],items:[],stx:[]};
+let db=null,fsMode=false;
+let entryType='in',selCh='cash',selCat='mat',selICat='fresh',stockFilter='all';
+
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const thb=n=>'฿'+(Math.round(n)).toLocaleString('th-TH');
+const num=n=>(+n||0);
+const esc=s=>String(s||'').replace(/[<>&"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]));
+const icatOf=id=>ICATS.find(c=>c.id===id)||ICATS[0];
+
+/* ---------------- DB LAYER ---------------- */
+function lsSave(){if(!fsMode)localStorage.setItem(LS_KEY,JSON.stringify(S))}
+async function dbAdd(col,obj){S[col].push(obj);if(fsMode)await db.collection(col).doc(obj.id).set(obj);else lsSave()}
+async function dbDel(col,id){S[col]=S[col].filter(x=>x.id!==id);if(fsMode)await db.collection(col).doc(id).delete();else lsSave()}
+async function dbUpd(col,obj){const i=S[col].findIndex(x=>x.id===obj.id);if(i>=0)S[col][i]=obj;if(fsMode)await db.collection(col).doc(obj.id).set(obj);else lsSave()}
+async function dbSettings(){if(fsMode)await db.collection('meta').doc('settings').set(S.settings);else lsSave()}
+
+function getFBConfig(){
+  // ใช้ config ที่ hardcode ก็ต่อเมื่อวางค่าจริงแล้ว (apiKey ของ Firebase ขึ้นต้นด้วย AIza เสมอ)
+  if(FIREBASE_CONFIG&&FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.apiKey.indexOf('PASTE')===-1&&FIREBASE_CONFIG.projectId.indexOf('PASTE')===-1)return FIREBASE_CONFIG;
+  try{return JSON.parse(localStorage.getItem(FB_KEY))}catch(e){return null}
+}
+function connectFB(){
+  let raw=document.getElementById('fbCfg').value.trim();
+  if(!raw)return alert('วาง config ก่อน');
+  // รับทั้ง JSON และ JS object literal จากหน้า console
+  raw=raw.replace(/^const\s+firebaseConfig\s*=\s*/,'').replace(/;$/,'');
+  let cfg;
+  try{cfg=JSON.parse(raw)}catch(e){
+    try{cfg=Function('"use strict";return('+raw+')')()}catch(e2){return alert('อ่าน config ไม่ได้ — เช็ค format อีกที')}
+  }
+  if(!cfg.projectId||!cfg.apiKey)return alert('config ไม่ครบ ต้องมี apiKey กับ projectId');
+  localStorage.setItem(FB_KEY,JSON.stringify(cfg));
+  location.reload();
+}
+function disconnectFB(){
+  if(!confirm('ตัดการเชื่อมต่อ? ข้อมูลบน Firebase ยังอยู่ แต่เครื่องนี้จะกลับไปใช้ Local'))return;
+  localStorage.removeItem(FB_KEY);location.reload();
+}
+async function initDB(){
+  const cfg=getFBConfig();
+  if(cfg){
+    try{
+      firebase.initializeApp(cfg);
+      await firebase.auth().signInAnonymously();
+      db=firebase.firestore();fsMode=true;
+      document.getElementById('dbTag').textContent='☁️ '+cfg.projectId;
+      document.getElementById('dbTag').classList.add('on');
+      document.getElementById('fbSetup').style.display='none';
+      document.getElementById('fbDisc').style.display='';
+      const metaDoc=await db.collection('meta').doc('settings').get();
+      if(metaDoc.exists)S.settings={...structuredClone(DEF_SETTINGS),...metaDoc.data()};
+      else{
+        // ครั้งแรก: ถ้ามีข้อมูล local เดิม ย้ายขึ้น cloud ให้
+        loadLS();
+        await db.collection('meta').doc('settings').set(S.settings);
+        for(const col of['tx','items','stx'])for(const o of S[col])await db.collection(col).doc(o.id).set(o);
+      }
+      for(const col of['tx','items','stx'])
+        db.collection(col).onSnapshot(snap=>{S[col]=snap.docs.map(d=>d.data());render()});
+      db.collection('meta').doc('settings').onSnapshot(d=>{if(d.exists){S.settings={...structuredClone(DEF_SETTINGS),...d.data()};render()}});
+    }catch(e){
+      alert('เชื่อม Firebase ไม่ได้: '+e.message+'\nใช้โหมด Local แทน — เช็คว่าเปิด Anonymous Auth และสร้าง Firestore แล้ว');
+      fsMode=false;loadLS();
+    }
+  }else loadLS();
+  document.getElementById('dbInfo').innerHTML=fsMode
+    ?'☁️ เชื่อมต่อ <b>Firestore</b> แล้ว (project: '+esc(getFBConfig().projectId)+') — sync ทุกเครื่องอัตโนมัติ'
+    :'💾 โหมด <b>Local</b> — ข้อมูลอยู่ในเครื่องนี้เท่านั้น วาง config ด้านล่างเพื่อ sync ผ่าน Firebase (ข้อมูลเดิมจะย้ายขึ้นให้อัตโนมัติรอบแรก)';
+  render();
+}
+function loadLS(){
+  try{const d=JSON.parse(localStorage.getItem(LS_KEY));
+    if(d){S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings}}}catch(e){}
+  // migrate v1
+  try{const v1=JSON.parse(localStorage.getItem('mootod_v1'));
+    if(v1&&!localStorage.getItem(LS_KEY)){
+      S=v1;S.settings={...structuredClone(DEF_SETTINGS),...S.settings};
+      if(num(v1.settings.monthlyFixCost)>0)S.settings.fixedItems=[{id:uid(),n:'Fix Cost (ยอดเดิม v1)',amt:num(v1.settings.monthlyFixCost)}];
+      S.items.forEach(it=>{it.avg=num(it.price);it.cat=it.cat||'fresh'});
+      lsSave();
+    }}catch(e){}
+}
+
+/* ---------------- CALC ---------------- */
+const totalFix=()=>S.settings.fixedItems.reduce((a,f)=>a+num(f.amt),0);
+function breakEven(){
+  const fixDay=totalFix()/Math.max(1,num(S.settings.openDays));
+  const margin=1-Math.min(95,num(S.settings.cogsPct))/100;
+  return margin>0?fixDay/margin:0;
+}
+function chOf(id){return S.settings.channels.find(c=>c.id===id)||{n:id,gp:0,ic:'💰'}}
+function netAmt(t){return t.amt*(1-(chOf(t.ch).gp||0)/100)}
+function txToday(){return S.tx.filter(t=>t.date===today())}
+function txMonth(m){return S.tx.filter(t=>t.date&&t.date.startsWith(m))}
+function stxMonth(m){return S.stx.filter(x=>x.date&&x.date.startsWith(m))}
+
+function usageStats(itemId){
+  const cut=new Date();cut.setDate(cut.getDate()-30);
+  const cutS=cut.toISOString().slice(0,10);
+  const outs=S.stx.filter(x=>x.itemId===itemId&&(x.type==='out'||x.type==='waste')&&x.date>=cutS);
+  const byDay={};outs.forEach(x=>byDay[x.date]=(byDay[x.date]||0)+num(x.qty));
+  const days=Object.values(byDay);
+  if(!days.length)return{avg:0,sd:0,n:0};
+  const avg=days.reduce((a,b)=>a+b,0)/days.length;
+  const sd=Math.sqrt(days.reduce((a,b)=>a+(b-avg)**2,0)/days.length);
+  return{avg,sd,n:days.length};
+}
+function stockCalc(it){
+  const u=usageStats(it.id),lead=Math.max(1,num(it.lead)||1),cover=num(it.cover)||3;
+  let ss;
+  if(u.n>=7)ss=1.65*u.sd*Math.sqrt(lead);
+  else ss=u.avg*lead*0.5;
+  const rop=u.avg*lead+ss;
+  const suggest=num(it.qty)<=rop?Math.max(0,Math.ceil(rop+u.avg*cover-num(it.qty))):0;
+  return{...u,ss,rop,suggest,lowData:u.n<7};
+}
+
+/* ---------------- ENTRY ---------------- */
+function setEntryType(t){
+  entryType=t;
+  document.getElementById('segIn').className=t==='in'?'on-in':'';
+  document.getElementById('segEx').className=t==='ex'?'on-ex':'';
+  document.getElementById('incomeBox').style.display=t==='in'?'':'none';
+  document.getElementById('expenseBox').style.display=t==='ex'?'':'none';
+  renderChips();
+}
+function renderChips(){
+  document.getElementById('chChips').innerHTML=S.settings.channels.map(c=>
+    `<button class="chip ${selCh===c.id?'on':''}" onclick="selCh='${c.id}';renderChips()">${c.ic||'💰'} ${esc(c.n)}${c.gp?` <small>(GP ${c.gp}%)</small>`:''}</button>`).join('');
+  document.getElementById('catChips').innerHTML=CATS.map(c=>
+    `<button class="chip ${selCat===c.id?'on':''}" onclick="selCat='${c.id}';renderChips()">${c.ic} ${c.n}</button>`).join('');
+  const mat=entryType==='ex'&&selCat==='mat';
+  document.getElementById('matBox').style.display=mat?'':'none';
+  document.getElementById('fixBox').style.display=(entryType==='ex'&&selCat==='fix')?'':'none';
+  if(mat)renderItemSelect();
+  if(entryType==='ex'&&selCat==='fix'){
+    document.getElementById('eFixItem').innerHTML='<option value="">— ไม่ระบุ —</option>'+
+      S.settings.fixedItems.map(f=>`<option value="${f.id}">${esc(f.n)} (${thb(f.amt)}/ด.)</option>`).join('');
+  }
+}
+function renderItemSelect(){
+  const sel=document.getElementById('eItem');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— เลือกของ —</option>'+ICATS.map(c=>
+    `<optgroup label="${c.ic} ${c.n}">`+S.items.filter(i=>(i.cat||'fresh')===c.id).map(i=>`<option value="${i.id}">${esc(i.n)}</option>`).join('')+'</optgroup>').join('');
+  sel.value=cur;
+  sel.onchange=updAvgPreview;
+  document.getElementById('eQty').oninput=updAvgPreview;
+  document.getElementById('eAmt').oninput=updAvgPreview;
+  updAvgPreview();
+}
+function updAvgPreview(){
+  const it=S.items.find(i=>i.id===document.getElementById('eItem').value);
+  const box=document.getElementById('avgPreview');
+  document.getElementById('eUnit').value=it?it.unit:'';
+  if(!it){box.textContent='';return}
+  const qty=num(document.getElementById('eQty').value),amt=num(document.getElementById('eAmt').value);
+  if(qty>0&&amt>0){
+    const newAvg=(num(it.qty)*num(it.avg)+amt)/(num(it.qty)+qty);
+    box.innerHTML=`ราคาครั้งนี้ ${(amt/qty).toFixed(2)}/${esc(it.unit)} → ต้นทุนเฉลี่ยใหม่ <b>${newAvg.toFixed(2)}</b> (เดิม ${num(it.avg).toFixed(2)})`;
+  }else box.innerHTML=`ต้นทุนเฉลี่ยตอนนี้ ${num(it.avg).toFixed(2)}/${esc(it.unit)} · คงเหลือ ${it.qty} ${esc(it.unit)}`;
+}
+async function saveEntry(){
+  const amt=num(document.getElementById('eAmt').value);
+  if(amt<=0)return alert('ใส่จำนวนเงินก่อน');
+  const note=document.getElementById('eNote').value.trim();
+  const t={id:uid(),date:today(),ts:Date.now(),type:entryType,amt,note};
+  if(entryType==='in'){t.ch=selCh}
+  else{
+    t.cat=selCat;
+    if(selCat==='fix'){
+      const fid=document.getElementById('eFixItem').value;
+      if(fid){t.fixId=fid;const f=S.settings.fixedItems.find(x=>x.id===fid);if(f&&!note)t.note=f.n}
+    }
+    if(selCat==='mat'){
+      const itemId=document.getElementById('eItem').value;
+      const qty=num(document.getElementById('eQty').value);
+      if(itemId&&qty>0){
+        t.itemId=itemId;t.qty=qty;
+        const it=S.items.find(i=>i.id===itemId);
+        const newAvg=(num(it.qty)*num(it.avg)+amt)/(num(it.qty)+qty);
+        it.qty=num(it.qty)+qty;it.avg=+newAvg.toFixed(4);it.last=+(amt/qty).toFixed(2);
+        await dbUpd('items',it);
+        await dbAdd('stx',{id:uid(),itemId,date:today(),ts:Date.now(),type:'in',qty,cost:amt,note:'ซื้อเข้า '+(amt/qty).toFixed(2)+'/หน่วย'});
+      }else if(S.items.length&&!confirm('ยังไม่ได้เลือกของ/จำนวน — บันทึกเป็นรายจ่ายเฉยๆ โดยไม่รับเข้าสต๊อก?'))return;
+    }
+  }
+  await dbAdd('tx',t);
+  document.getElementById('eAmt').value='';document.getElementById('eNote').value='';document.getElementById('eQty').value='';
+  render();document.getElementById('eAmt').focus();
+}
+async function delTx(id){
+  const t=S.tx.find(x=>x.id===id);
+  if(!confirm('ลบรายการนี้?'+(t&&t.itemId?' (สต๊อกที่รับเข้าไปแล้วจะไม่ย้อนกลับ — ไปปรับที่หน้าสต๊อกเอง)':'')))return;
+  await dbDel('tx',id);render();
+}
+
+/* ---------------- STOCK ---------------- */
+function openItemModal(id){
+  const it=id?S.items.find(i=>i.id===id):null;
+  selICat=it?(it.cat||'fresh'):'fresh';
+  document.getElementById('imTitle').textContent=it?'แก้ไข: '+it.n:'เพิ่มของเข้าระบบสต๊อก';
+  document.getElementById('imId').value=it?it.id:'';
+  document.getElementById('imName').value=it?it.n:'';
+  document.getElementById('imUnit').value=it?it.unit:'';
+  document.getElementById('imAvg').value=it?it.avg:'';
+  document.getElementById('imQty').value=it?it.qty:'';
+  document.getElementById('imLead').value=it?it.lead:1;
+  document.getElementById('imCover').value=it?it.cover:3;
+  document.getElementById('imDelWrap').style.display=it?'':'none';
+  renderImCats();
+  document.getElementById('itemModal').classList.add('show');
+}
+function renderImCats(){
+  document.getElementById('imCatChips').innerHTML=ICATS.map(c=>
+    `<button class="chip ${selICat===c.id?'on':''}" onclick="selICat='${c.id}';renderImCats()">${c.ic} ${c.n}</button>`).join('');
+}
+async function saveItem(){
+  const n=document.getElementById('imName').value.trim();
+  if(!n)return alert('ใส่ชื่อ');
+  const id=document.getElementById('imId').value||uid();
+  const old=S.items.find(i=>i.id===id);
+  const it={id,n,cat:selICat,unit:document.getElementById('imUnit').value.trim()||'หน่วย',
+    avg:num(document.getElementById('imAvg').value),
+    last:old?old.last:num(document.getElementById('imAvg').value),
+    qty:num(document.getElementById('imQty').value),
+    lead:num(document.getElementById('imLead').value)||1,
+    cover:num(document.getElementById('imCover').value)||3};
+  if(old&&old.qty!==it.qty)
+    await dbAdd('stx',{id:uid(),itemId:id,date:today(),ts:Date.now(),type:'adj',qty:it.qty-old.qty,note:'ปรับยอดมือ'});
+  old?await dbUpd('items',it):await dbAdd('items',it);
+  closeModal('itemModal');render();
+}
+async function deleteItem(){
+  const id=document.getElementById('imId').value;
+  if(!confirm('ลบรายการนี้และประวัติทั้งหมดของมัน?'))return;
+  await dbDel('items',id);
+  for(const x of S.stx.filter(x=>x.itemId===id))await dbDel('stx',x.id);
+  closeModal('itemModal');render();
+}
+function openUse(id){
+  const it=S.items.find(i=>i.id===id);
+  document.getElementById('umTitle').textContent=it.n+' (เหลือ '+it.qty+' '+it.unit+')';
+  document.getElementById('umId').value=id;
+  document.getElementById('umQty').value='';
+  const hist=S.stx.filter(x=>x.itemId===id).sort((a,b)=>b.ts-a.ts).slice(0,8);
+  const LAB={in:'รับเข้า',out:'เบิกใช้',waste:'ของเสีย',adj:'ปรับยอด'};
+  document.getElementById('umHist').innerHTML=hist.length?hist.map(x=>
+    `<div class="row"><div class="mid"><div class="t">${LAB[x.type]||x.type}</div><div class="s">${x.date}${x.note?' · '+esc(x.note):''}</div></div><div class="amt ${x.type==='in'?'in':'ex'}">${x.type==='in'?'+':x.type==='adj'?(x.qty>=0?'+':''):'−'}${x.qty}</div></div>`
+  ).join(''):'<div class="empty">ยังไม่มีประวัติ</div>';
+  document.getElementById('useModal').classList.add('show');
+}
+async function saveUse(type){
+  const id=document.getElementById('umId').value,qty=num(document.getElementById('umQty').value);
+  if(qty<=0)return alert('ใส่จำนวน');
+  const it=S.items.find(i=>i.id===id);
+  it.qty=Math.max(0,num(it.qty)-qty);
+  await dbUpd('items',it);
+  await dbAdd('stx',{id:uid(),itemId:id,date:today(),ts:Date.now(),type,qty,cost:+(qty*num(it.avg)).toFixed(2)});
+  closeModal('useModal');render();
+}
+/* นับสต๊อกท้ายวัน */
+function openCountModal(){
+  if(!S.items.length)return alert('ยังไม่มีรายการสต๊อก');
+  document.getElementById('countList').innerHTML=S.items.map(it=>
+    `<div class="count-row"><span style="font-size:13.5px">${icatOf(it.cat).ic} ${esc(it.n)}</span>
+     <span class="right num">${it.qty} <small class="sub">${esc(it.unit)}</small></span>
+     <input type="number" inputmode="decimal" id="cnt_${it.id}" placeholder="—"></div>`).join('');
+  document.getElementById('countModal').classList.add('show');
+}
+async function saveCount(){
+  let posted=0;
+  for(const it of S.items){
+    const v=document.getElementById('cnt_'+it.id).value;
+    if(v==='')continue;
+    const counted=num(v),diff=counted-num(it.qty);
+    if(diff===0)continue;
+    if(diff<0)
+      await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'out',qty:-diff,cost:+(-diff*num(it.avg)).toFixed(2),note:'นับท้ายวัน'});
+    else
+      await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'adj',qty:diff,note:'นับท้ายวัน (เจอเกิน)'});
+    it.qty=counted;await dbUpd('items',it);posted++;
+  }
+  closeModal('countModal');render();
+  alert(posted?'บันทึกผลนับ '+posted+' รายการ ✓ ระบบตัดการใช้ให้แล้ว':'ไม่มีรายการที่ยอดต่างจากระบบ');
+}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+
+/* ---------------- SETTINGS ---------------- */
+function fillSettings(){
+  const st=S.settings;
+  document.getElementById('sName').value=st.shopName;
+  document.getElementById('sDays').value=st.openDays||30;
+  document.getElementById('sCogs').value=st.cogsPct||'';
+  document.getElementById('fixTotal').textContent=thb(totalFix());
+  document.getElementById('fixList').innerHTML=st.fixedItems.length?st.fixedItems.map((f,i)=>
+    `<div class="row"><div class="dot" style="background:var(--gold-soft)">🏠</div>
+     <div class="mid"><div class="t">${esc(f.n)}</div></div>
+     <div class="amt">${thb(f.amt)}<span class="sub">/ด.</span></div>
+     <button class="del" onclick="delFixItem(${i})">✕</button></div>`).join('')
+    :'<div class="empty">ยังไม่มีรายการ — เพิ่มด้านล่าง (ค่าเช่า, เน็ต, เงินเดือนพนักงานประจำ ฯลฯ)</div>';
+  previewBE();
+  document.getElementById('chList').innerHTML=st.channels.map((c,i)=>
+    `<div class="row"><div class="dot" style="background:var(--gold-soft)">${c.ic||'💰'}</div>
+     <div class="mid"><div class="t">${esc(c.n)}</div><div class="s">GP ${c.gp||0}%</div></div>
+     ${['cash','transfer'].includes(c.id)?'':`<button class="del" onclick="delChannel(${i})">✕</button>`}</div>`).join('');
+}
+function previewBE(){
+  const fix=totalFix(),days=num(document.getElementById('sDays').value)||30,cogs=num(document.getElementById('sCogs').value);
+  const m=1-cogs/100;
+  document.getElementById('bePreview').innerHTML=(fix&&m>0)
+    ?`(${fix.toLocaleString()} ÷ ${days}) ÷ (1 − ${cogs}%) = <b>ต้องขายวันละ ${thb(fix/days/m)}</b>`
+    :'เพิ่มรายการ Fix Cost และใส่ % วัตถุดิบก่อน';
+}
+document.addEventListener('input',e=>{if(['sDays','sCogs'].includes(e.target.id))previewBE()});
+async function addFixItem(){
+  const n=document.getElementById('newFixName').value.trim(),a=num(document.getElementById('newFixAmt').value);
+  if(!n||a<=0)return alert('ใส่ชื่อกับยอดต่อเดือน');
+  S.settings.fixedItems.push({id:uid(),n,amt:a});
+  document.getElementById('newFixName').value='';document.getElementById('newFixAmt').value='';
+  await dbSettings();render();
+}
+async function delFixItem(i){
+  if(!confirm('ลบ "'+S.settings.fixedItems[i].n+'" ออกจาก Fix Cost?'))return;
+  S.settings.fixedItems.splice(i,1);await dbSettings();render();
+}
+async function saveSettings(){
+  const st=S.settings;
+  st.shopName=document.getElementById('sName').value.trim()||'ร้านหมูทอด';
+  st.openDays=num(document.getElementById('sDays').value)||30;
+  st.cogsPct=num(document.getElementById('sCogs').value);
+  await dbSettings();render();alert('บันทึกแล้ว ✓');
+}
+async function addChannel(){
+  const n=document.getElementById('newChName').value.trim();
+  if(!n)return alert('ใส่ชื่อช่องทาง');
+  S.settings.channels.push({id:uid(),n,gp:num(document.getElementById('newChGP').value),ic:'🛵'});
+  document.getElementById('newChName').value='';document.getElementById('newChGP').value='';
+  await dbSettings();render();
+}
+async function delChannel(i){
+  if(!confirm('ลบช่องทางนี้?'))return;
+  S.settings.channels.splice(i,1);await dbSettings();render();
+}
+
+/* ---------------- EXPORT ---------------- */
+function exportCSV(){
+  const m=document.getElementById('repMonth').value;
+  const rows=[['date','type','channel/category','amount','net_after_gp','note']];
+  txMonth(m).sort((a,b)=>a.ts-b.ts).forEach(t=>{
+    rows.push([t.date,t.type==='in'?'income':'expense',
+      t.type==='in'?chOf(t.ch).n:(CATS.find(c=>c.id===t.cat)||{}).n||t.cat,
+      t.amt,t.type==='in'?netAmt(t).toFixed(2):'',(t.note||'').replace(/,/g,' ')]);
+  });
+  dl(new Blob(['\ufeff'+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),`mootod_${m}.csv`);
+}
+function exportJSON(){dl(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),'mootod_backup_'+today()+'.json')}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click()}
+function importJSON(){document.getElementById('impFile').click()}
+async function doImport(inp){
+  const f=inp.files[0];if(!f)return;
+  const d=JSON.parse(await f.text());
+  if(!confirm('กู้คืนจะทับข้อมูลปัจจุบันทั้งหมด แน่ใจ?'))return;
+  S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings};
+  if(fsMode){
+    await dbSettings();
+    for(const col of['tx','items','stx'])for(const o of S[col])await db.collection(col).doc(o.id).set(o);
+  }else lsSave();
+  render();alert('กู้คืนแล้ว ✓');
+}
+
+/* ---------------- RENDER ---------------- */
+function go(pg,btn){
+  document.querySelectorAll('.tabpage').forEach(p=>p.classList.remove('show'));
+  document.getElementById('pg-'+pg).classList.add('show');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');render();
+}
+function hbarRow(label,val,max,color){
+  return `<div class="hbar"><div class="lab"><span>${label}</span><b class="num">${thb(val)}</b></div>
+    <div class="tr"><i style="width:${max?Math.min(100,val/max*100):0}%;background:${color}"></i></div></div>`;
+}
+function render(){
+  const st=S.settings;
+  document.getElementById('shopName').firstChild.textContent=st.shopName;
+  document.getElementById('hdrDate').textContent=new Date().toLocaleDateString('th-TH',{weekday:'long',day:'numeric',month:'long'});
+  if(!document.getElementById('repMonth').value)document.getElementById('repMonth').value=today().slice(0,7);
+
+  /* dashboard */
+  const tt=txToday(),be=breakEven();
+  const gross=tt.filter(t=>t.type==='in').reduce((a,t)=>a+t.amt,0);
+  const net=tt.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
+  const sToday=S.stx.filter(x=>x.date===today());
+  const matUsed=sToday.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
+  const wasteToday=sToday.filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
+  const useReal=matUsed>0;
+  const matCost=useReal?matUsed:net*num(st.cogsPct)/100;
+  const gp=net-matCost;
+  const pct=be>0?net/be*100:0;
+  document.getElementById('kpiPct').textContent=be>0?Math.round(pct)+'%':'—';
+  document.getElementById('kpiTarget').textContent=be>0?Math.round(be).toLocaleString():'ตั้งค่าก่อน';
+  document.getElementById('kpiNet').textContent=thb(net);
+  const bar=document.getElementById('kpiBar');
+  bar.style.width=Math.min(100,pct)+'%';bar.className=pct>=100?'ok':'';
+  const badge=document.getElementById('kpiBadge');
+  if(be<=0){badge.textContent='ยังไม่ตั้งค่า';badge.className='badge b-warn'}
+  else if(pct>=100){badge.textContent='✓ On Target';badge.className='badge b-ok'}
+  else if(pct>=70){badge.textContent='ใกล้แล้ว';badge.className='badge b-warn'}
+  else{badge.textContent='ยังห่างเป้า';badge.className='badge b-bad'}
+  document.getElementById('dGross').textContent=thb(gross);
+  document.getElementById('dMat').textContent=thb(matCost);
+  document.getElementById('dMatL').textContent=useReal?'ต้นทุนของที่ใช้ (จริง)':'ต้นทุนของ (ประมาณ '+num(st.cogsPct)+'%)';
+  document.getElementById('dProfit').textContent=thb(gp);
+  document.getElementById('dNote').innerHTML=(useReal
+    ?'ต้นทุนคิดจากการตัดสต๊อกจริง (เบิกใช้/นับท้ายวัน × ต้นทุนเฉลี่ย)'+(wasteToday>0?' · ของเสียวันนี้ '+thb(wasteToday):'')
+    :'ยังไม่มีการตัดสต๊อกวันนี้ — ต้นทุนใช้ % ประมาณการไปก่อน')+' · กำไรนี้ยังไม่หัก Fix Cost รายวัน ('+thb(totalFix()/Math.max(1,st.openDays))+')';
+
+  const chSum={};tt.filter(t=>t.type==='in').forEach(t=>chSum[t.ch]=(chSum[t.ch]||0)+t.amt);
+  const chKeys=Object.keys(chSum);
+  document.getElementById('dashChannels').innerHTML=chKeys.length?chKeys.map(k=>{
+    const c=chOf(k),g=chSum[k],n=g*(1-(c.gp||0)/100);
+    return `<div class="row"><div class="dot" style="background:var(--gold-soft)">${c.ic||'💰'}</div>
+      <div class="mid"><div class="t">${esc(c.n)}</div><div class="s">${c.gp?`หลังหัก GP ${c.gp}% = ${thb(n)}`:'ไม่มีค่า GP'}</div></div>
+      <div class="amt in">${thb(g)}</div></div>`;
+  }).join(''):'<div class="empty">ยังไม่มีรายรับวันนี้</div>';
+
+  const alerts=S.items.map(it=>({it,c:stockCalc(it)})).filter(x=>x.c.suggest>0);
+  document.getElementById('alertCount').textContent=alerts.length?alerts.length+' รายการ':'';
+  document.getElementById('stockAlerts').innerHTML=alerts.length?alerts.map(x=>
+    `<div class="alert-item">${icatOf(x.it.cat).ic} <b>${esc(x.it.n)}</b> เหลือ ${x.it.qty} ${esc(x.it.unit)} (จุดสั่ง ${x.c.rop.toFixed(1)}) → <b>สั่งเพิ่ม ${x.c.suggest} ${esc(x.it.unit)}</b> ≈ ${thb(x.c.suggest*num(x.it.avg))}</div>`
+  ).join(''):'<div class="empty">สต๊อกยังไม่ถึงจุดสั่งซื้อ 👍</div>';
+
+  const curM=today().slice(0,7),tm=txMonth(curM);
+  const mi=tm.filter(t=>t.type==='in').reduce((a,t)=>a+t.amt,0);
+  const mgp=tm.filter(t=>t.type==='in').reduce((a,t)=>a+(t.amt-netAmt(t)),0);
+  const me=tm.filter(t=>t.type==='ex').reduce((a,t)=>a+t.amt,0);
+  const mw=stxMonth(curM).filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
+  document.getElementById('mIn').textContent=thb(mi);
+  document.getElementById('mEx').textContent=thb(me+mgp);
+  document.getElementById('mNet').textContent=thb(mi-mgp-me);
+  document.getElementById('mWaste').textContent=mw>0?'🗑 มูลค่าของเสียเดือนนี้ '+thb(mw)+' — ถ้าเกิน 3-5% ของยอดขาย ต้องหาสาเหตุ':'';
+
+  /* entry */
+  renderChips();
+  const tl=tt.slice().sort((a,b)=>b.ts-a.ts);
+  document.getElementById('todayCount').textContent=tl.length?tl.length+' รายการ':'';
+  document.getElementById('todayList').innerHTML=tl.length?tl.map(t=>{
+    const isIn=t.type==='in';
+    const c=isIn?chOf(t.ch):(CATS.find(x=>x.id===t.cat)||{n:t.cat,ic:'📎'});
+    const sub=[isIn&&chOf(t.ch).gp?`สุทธิ ${thb(netAmt(t))}`:'',t.qty?`+${t.qty} เข้าสต๊อก`:'',t.note].filter(Boolean).join(' · ');
+    return `<div class="row"><div class="dot" style="background:${isIn?'var(--green-soft)':'var(--red-soft)'}">${c.ic||'💰'}</div>
+      <div class="mid"><div class="t">${esc(c.n)}</div><div class="s">${esc(sub)||new Date(t.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>
+      <div class="amt ${isIn?'in':'ex'}">${isIn?'+':'−'}${thb(t.amt)}</div>
+      <button class="del" onclick="delTx('${t.id}')">✕</button></div>`;
+  }).join(''):'<div class="empty">ยังไม่มีรายการ</div>';
+
+  /* stock */
+  document.getElementById('icatFilter').innerHTML=
+    `<button class="chip ${stockFilter==='all'?'on':''}" onclick="stockFilter='all';render()">ทั้งหมด</button>`+
+    ICATS.map(c=>`<button class="chip ${stockFilter===c.id?'on':''}" onclick="stockFilter='${c.id}';render()">${c.ic} ${c.n}</button>`).join('');
+  const items=S.items.filter(i=>stockFilter==='all'||(i.cat||'fresh')===stockFilter);
+  document.getElementById('stockList').innerHTML=items.length?items.map(it=>{
+    const c=stockCalc(it);
+    const ratio=c.rop>0?Math.min(1,it.qty/(c.rop*1.5)):1;
+    const col=c.suggest>0?'var(--red)':ratio<.7?'var(--gold)':'var(--green)';
+    return `<div class="row" style="align-items:flex-start">
+      <div class="mid">
+        <div class="t">${icatOf(it.cat).ic} ${esc(it.n)} <span class="sub">· เฉลี่ย ${num(it.avg).toFixed(2)}/${esc(it.unit)}${it.last?' · ล่าสุด '+num(it.last).toFixed(2):''}</span></div>
+        <div class="s">ใช้ ${c.avg.toFixed(1)}/วัน · SS ${c.ss.toFixed(1)} · จุดสั่ง ${c.rop.toFixed(1)} · มูลค่า ${thb(num(it.qty)*num(it.avg))} ${c.lowData?'· <b style="color:var(--gold)">ข้อมูลน้อย</b>':''}</div>
+        <div class="slvl"><i style="width:${ratio*100}%;background:${col}"></i></div>
+        ${c.suggest>0?`<div class="s" style="color:var(--red);font-weight:700;margin-top:3px">→ สั่งเพิ่ม ${c.suggest} ${esc(it.unit)}</div>`:''}
+      </div>
+      <div class="right" style="flex-shrink:0">
+        <div class="num" style="font-size:19px;font-weight:600">${it.qty}<span class="sub" style="font-size:11px"> ${esc(it.unit)}</span></div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <button class="btn sm ghost" onclick="openItemModal('${it.id}')">แก้ไข</button>
+          <button class="btn sm" onclick="openUse('${it.id}')">ตัดสต๊อก</button>
+        </div>
+      </div></div>`;
+  }).join(''):'<div class="empty">ไม่มีรายการในหมวดนี้</div>';
+
+  /* report */
+  const m=document.getElementById('repMonth').value;
+  const rm=txMonth(m),rs=stxMonth(m);
+  const rIn=rm.filter(t=>t.type==='in').reduce((a,t)=>a+t.amt,0);
+  const rGP=rm.filter(t=>t.type==='in').reduce((a,t)=>a+(t.amt-netAmt(t)),0);
+  const rEx=rm.filter(t=>t.type==='ex').reduce((a,t)=>a+t.amt,0);
+  document.getElementById('rIn').textContent=thb(rIn);
+  document.getElementById('rGP').textContent=thb(rGP);
+  document.getElementById('rNet').textContent=thb(rIn-rGP-rEx);
+  document.getElementById('rMat').textContent=thb(rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
+  document.getElementById('rWaste').textContent=thb(rs.filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
+  const rc={};rm.filter(t=>t.type==='in').forEach(t=>rc[t.ch]=(rc[t.ch]||0)+t.amt);
+  const rck=Object.keys(rc).sort((a,b)=>rc[b]-rc[a]);
+  document.getElementById('repChannels').innerHTML=rck.length?rck.map(k=>hbarRow((chOf(k).ic||'')+' '+esc(chOf(k).n),rc[k],rc[rck[0]],'var(--gold)')).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
+  const re={};rm.filter(t=>t.type==='ex').forEach(t=>re[t.cat]=(re[t.cat]||0)+t.amt);
+  if(rGP>0)re['gp']=rGP;
+  const rek=Object.keys(re).sort((a,b)=>re[b]-re[a]);
+  const catN=id=>id==='gp'?'🛵 GP เดลิเวอรี่':((CATS.find(c=>c.id===id)||{}).ic||'')+' '+((CATS.find(c=>c.id===id)||{n:id}).n);
+  document.getElementById('repCats').innerHTML=rek.length?rek.map(k=>hbarRow(catN(k),re[k],re[rek[0]],'var(--red)')).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
+
+  fillSettings();
+}
+
+setEntryType('in');
+initDB();
+</script>
+</body>
+</html>
