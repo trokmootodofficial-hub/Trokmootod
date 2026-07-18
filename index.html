@@ -108,8 +108,9 @@ nav button.act{color:var(--brown)}
 .empty{text-align:center;color:var(--muted);padding:24px 0;font-size:13.5px}
 .mini{font-size:12px;color:var(--muted);line-height:1.5}
 .right{text-align:right}.mt{margin-top:12px}
-.count-row{display:grid;grid-template-columns:1fr 90px 100px;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
-.count-row input{padding:8px;text-align:center;font-family:'Prompt'}
+.count-row{display:grid;grid-template-columns:1fr 58px 78px 76px;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.count-row input{padding:8px 4px;text-align:center;font-family:'Prompt'}
+.count-row .dif{font-family:'Prompt';font-size:12.5px;font-weight:600;text-align:right}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -224,10 +225,10 @@ nav button.act{color:var(--brown)}
     <div id="stockList"><div class="empty">ยังไม่มีรายการสต๊อก — กด "เพิ่ม"</div></div>
     <div class="formula">
       📐 <b>สูตรที่ระบบใช้</b><br>
-      ต้นทุนเฉลี่ย (Moving Avg) = (ของเดิม×ต้นทุนเดิม + เงินที่ซื้อ) ÷ ของรวม — รองรับราคาของสดที่แกว่ง<br>
-      Safety Stock = 1.65 × SD(ใช้ต่อวัน) × √Lead time (มั่นใจ 95%)<br>
-      จุดสั่งซื้อ = ใช้เฉลี่ย/วัน × Lead time + Safety Stock<br>
-      <span style="opacity:.75">การใช้/วัน เรียนรู้จาก เบิกใช้ + ของเสีย + นับท้ายวัน ย้อนหลัง 30 วัน — วิธีที่ง่ายสุด: <b>นับท้ายวันอย่างเดียวก็พอ</b> ระบบคำนวณการใช้ให้เอง</span>
+      ต้นทุนเฉลี่ย (Moving Avg) = (ของเดิม×ต้นทุนเดิม + เงินที่ซื้อ) ÷ ของรวม<br>
+      แนะนำสั่ง = เผื่อใช้ตามวันที่ตั้ง + ใช้ระหว่างรอของ (lead time) + กันขาด (Safety Stock) − คงเหลือ<br>
+      Safety Stock = 1.65 × SD(ใช้/วัน) × √lead (มั่นใจ 95%) — ข้อมูลต่ำกว่า 7 วันใช้ค่าประมาณหยาบไปก่อน<br>
+      <span style="opacity:.75"><b>ตัวเลขจะเพี้ยนถ้าตั้ง "สั่งให้พอ (วัน)" ไม่ตรงพฤติกรรมซื้อจริง</b> — ของสดซื้อรายวันตั้ง 1, ของแห้งซื้อรายสัปดาห์ตั้ง 7 · การใช้/วัน เรียนรู้จาก เบิกใช้ + ของเสีย + นับท้ายวัน ย้อนหลัง 30 วัน</span>
     </div>
   </div>
 </section>
@@ -337,7 +338,7 @@ nav button.act{color:var(--brown)}
     <div><label>Lead time (วัน)</label><input type="number" id="imLead" inputmode="numeric" placeholder="1"></div>
     <div><label>สั่งให้พอ (วัน)</label><input type="number" id="imCover" inputmode="numeric" placeholder="3"></div>
   </div>
-  <div class="mini mt">Lead time = สั่งแล้วกี่วันของถึง · ต้นทุนเฉลี่ยจะอัปเดตเองทุกครั้งที่ซื้อเข้า แก้มือได้ถ้าตัวเลขเพี้ยน</div>
+  <div class="mini mt">Lead time = สั่งแล้วกี่วันของถึง — <b>ของสดซื้อเช้าได้เลยใส่ 0</b> · "สั่งให้พอ" ของสดใส่ 1 (ซื้อรายวัน) ของแห้ง/ถุงใส่ยาวได้ · ต้นทุนเฉลี่ยอัปเดตเองทุกครั้งที่ซื้อ</div>
   <div class="grid2 mt">
     <button class="btn ghost" onclick="closeModal('itemModal')">ยกเลิก</button>
     <button class="btn" onclick="saveItem()">บันทึก</button>
@@ -361,13 +362,25 @@ nav button.act{color:var(--brown)}
 <!-- stock count modal -->
 <div class="modal-bg" id="countModal"><div class="modal">
   <h3>📋 นับสต๊อกท้ายวัน</h3>
-  <div class="mini">นับของจริงแล้วกรอกช่องขวา — ระบบคำนวณ "ใช้ไปเท่าไหร่" ให้เอง (ยกมา + ซื้อเข้า − นับได้) ช่องไหนไม่นับ เว้นว่างไว้</div>
-  <div class="count-row" style="border-bottom:2px solid var(--ink);font-size:12px;font-weight:700;color:var(--muted)"><span>รายการ</span><span class="right">ในระบบ</span><span class="right">นับได้จริง</span></div>
+  <div class="mini">นับของจริงแล้วกรอกช่อง "นับได้" — คอลัมน์ขวาสุดโชว์ทันทีว่าระบบจะตัดเท่าไหร่ ช่องไหนไม่นับ เว้นว่าง</div>
+  <div class="count-row" style="border-bottom:2px solid var(--ink);font-size:12px;font-weight:700;color:var(--muted)"><span>รายการ</span><span class="right">ระบบ</span><span class="right">นับได้</span><span class="right">จะตัด</span></div>
   <div id="countList"></div>
   <div class="grid2 mt">
     <button class="btn ghost" onclick="closeModal('countModal')">ยกเลิก</button>
     <button class="btn" onclick="saveCount()">บันทึกผลนับ</button>
   </div>
+</div></div>
+
+<!-- count result modal -->
+<div class="modal-bg" id="countResultModal"><div class="modal">
+  <h3>✅ บันทึกผลนับแล้ว — Transaction ที่เกิดขึ้น</h3>
+  <div id="countResultList"></div>
+  <div class="stat mt" style="display:flex;justify-content:space-between;align-items:center">
+    <span class="l">รวมมูลค่าของที่ใช้ไปวันนี้ (จากรอบนับนี้)</span>
+    <span class="v" id="countResultTotal">฿0</span>
+  </div>
+  <div class="mini mt">ทุกรายการถูกเก็บเป็น transaction ถาวร ดูย้อนหลังได้ที่ปุ่ม "ตัดสต๊อก" ของแต่ละตัว</div>
+  <div class="mt"><button class="btn" onclick="closeModal('countResultModal')" style="width:100%">รับทราบ</button></div>
 </div></div>
 
 <script>
@@ -491,13 +504,15 @@ function usageStats(itemId){
   return{avg,sd,n:days.length};
 }
 function stockCalc(it){
-  const u=usageStats(it.id),lead=Math.max(1,num(it.lead)||1),cover=num(it.cover)||3;
+  const u=usageStats(it.id),lead=Math.max(0,num(it.lead)),cover=Math.max(1,num(it.cover)||1);
   let ss;
-  if(u.n>=7)ss=1.65*u.sd*Math.sqrt(lead);
-  else ss=u.avg*lead*0.5;
-  const rop=u.avg*lead+ss;
-  const suggest=num(it.qty)<=rop?Math.max(0,Math.ceil(rop+u.avg*cover-num(it.qty))):0;
-  return{...u,ss,rop,suggest,lowData:u.n<7};
+  if(u.n>=7)ss=1.65*u.sd*Math.sqrt(Math.max(1,lead));
+  else ss=u.avg*Math.max(1,lead)*0.5; // ข้อมูลน้อย: กันเหนียว 50% ของการใช้ 1 ช่วง lead
+  const leadUse=u.avg*lead;           // ใช้ระหว่างรอของ
+  const rop=leadUse+ss;
+  const coverUse=u.avg*cover;         // เผื่อใช้ตามจำนวนวันที่ตั้ง
+  const suggest=num(it.qty)<=rop?Math.max(0,Math.ceil(rop+coverUse-num(it.qty))):0;
+  return{...u,ss,rop,leadUse,coverUse,cover,lead,suggest,lowData:u.n<7};
 }
 
 /* ---------------- ENTRY ---------------- */
@@ -581,6 +596,7 @@ async function delTx(id){
 }
 
 /* ---------------- STOCK ---------------- */
+const ICAT_DEF={fresh:{lead:0,cover:1},dry:{lead:1,cover:7},pack:{lead:2,cover:14},supply:{lead:2,cover:14}};
 function openItemModal(id){
   const it=id?S.items.find(i=>i.id===id):null;
   selICat=it?(it.cat||'fresh'):'fresh';
@@ -590,15 +606,24 @@ function openItemModal(id){
   document.getElementById('imUnit').value=it?it.unit:'';
   document.getElementById('imAvg').value=it?it.avg:'';
   document.getElementById('imQty').value=it?it.qty:'';
-  document.getElementById('imLead').value=it?it.lead:1;
-  document.getElementById('imCover').value=it?it.cover:3;
+  document.getElementById('imLead').value=it?it.lead:ICAT_DEF[selICat].lead;
+  document.getElementById('imCover').value=it?it.cover:ICAT_DEF[selICat].cover;
   document.getElementById('imDelWrap').style.display=it?'':'none';
   renderImCats();
   document.getElementById('itemModal').classList.add('show');
 }
 function renderImCats(){
   document.getElementById('imCatChips').innerHTML=ICATS.map(c=>
-    `<button class="chip ${selICat===c.id?'on':''}" onclick="selICat='${c.id}';renderImCats()">${c.ic} ${c.n}</button>`).join('');
+    `<button class="chip ${selICat===c.id?'on':''}" onclick="pickICat('${c.id}')">${c.ic} ${c.n}</button>`).join('');
+}
+function pickICat(id){
+  selICat=id;
+  // ของใหม่: ปรับ lead/cover ตามหมวดให้เลย (ของเดิมไม่ยุ่ง)
+  if(!document.getElementById('imId').value){
+    document.getElementById('imLead').value=ICAT_DEF[id].lead;
+    document.getElementById('imCover').value=ICAT_DEF[id].cover;
+  }
+  renderImCats();
 }
 async function saveItem(){
   const n=document.getElementById('imName').value.trim();
@@ -609,8 +634,8 @@ async function saveItem(){
     avg:num(document.getElementById('imAvg').value),
     last:old?old.last:num(document.getElementById('imAvg').value),
     qty:num(document.getElementById('imQty').value),
-    lead:num(document.getElementById('imLead').value)||1,
-    cover:num(document.getElementById('imCover').value)||3};
+    lead:Math.max(0,num(document.getElementById('imLead').value)),
+    cover:Math.max(1,num(document.getElementById('imCover').value)||1)};
   if(old&&old.qty!==it.qty)
     await dbAdd('stx',{id:uid(),itemId:id,date:today(),ts:Date.now(),type:'adj',qty:it.qty-old.qty,note:'ปรับยอดมือ'});
   old?await dbUpd('items',it):await dbAdd('items',it);
@@ -648,26 +673,50 @@ async function saveUse(type){
 function openCountModal(){
   if(!S.items.length)return alert('ยังไม่มีรายการสต๊อก');
   document.getElementById('countList').innerHTML=S.items.map(it=>
-    `<div class="count-row"><span style="font-size:13.5px">${icatOf(it.cat).ic} ${esc(it.n)}</span>
-     <span class="right num">${it.qty} <small class="sub">${esc(it.unit)}</small></span>
-     <input type="number" inputmode="decimal" id="cnt_${it.id}" placeholder="—"></div>`).join('');
+    `<div class="count-row"><span style="font-size:13px">${icatOf(it.cat).ic} ${esc(it.n)}</span>
+     <span class="right num" style="font-size:13px">${it.qty}</span>
+     <input type="number" inputmode="decimal" id="cnt_${it.id}" placeholder="—" oninput="updCountDiff('${it.id}')">
+     <span class="dif sub" id="dif_${it.id}">—</span></div>`).join('');
   document.getElementById('countModal').classList.add('show');
 }
+function updCountDiff(id){
+  const it=S.items.find(i=>i.id===id);
+  const v=document.getElementById('cnt_'+id).value;
+  const el=document.getElementById('dif_'+id);
+  if(v===''){el.textContent='—';el.style.color='';return}
+  const diff=num(v)-num(it.qty);
+  if(diff===0){el.textContent='ตรง ✓';el.style.color='var(--green)'}
+  else if(diff<0){el.textContent='ตัด '+(-diff)+' ('+thb(-diff*num(it.avg))+')';el.style.color='var(--red)'}
+  else{el.textContent='เกิน +'+diff;el.style.color='var(--blue)'}
+}
 async function saveCount(){
-  let posted=0;
+  const results=[];
   for(const it of S.items){
     const v=document.getElementById('cnt_'+it.id).value;
     if(v==='')continue;
     const counted=num(v),diff=counted-num(it.qty);
-    if(diff===0)continue;
-    if(diff<0)
-      await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'out',qty:-diff,cost:+(-diff*num(it.avg)).toFixed(2),note:'นับท้ายวัน'});
-    else
+    if(diff===0){results.push({it,diff:0});continue}
+    if(diff<0){
+      const cost=+(-diff*num(it.avg)).toFixed(2);
+      await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'out',qty:-diff,cost,note:'นับท้ายวัน'});
+      results.push({it,diff,cost});
+    }else{
       await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'adj',qty:diff,note:'นับท้ายวัน (เจอเกิน)'});
-    it.qty=counted;await dbUpd('items',it);posted++;
+      results.push({it,diff,cost:0});
+    }
+    it.qty=counted;await dbUpd('items',it);
   }
   closeModal('countModal');render();
-  alert(posted?'บันทึกผลนับ '+posted+' รายการ ✓ ระบบตัดการใช้ให้แล้ว':'ไม่มีรายการที่ยอดต่างจากระบบ');
+  if(!results.length)return alert('ไม่ได้กรอกช่องไหนเลย — ไม่มีอะไรถูกบันทึก');
+  let total=0;
+  document.getElementById('countResultList').innerHTML=results.map(r=>{
+    if(r.diff===0)return `<div class="row"><div class="dot" style="background:var(--green-soft)">✓</div><div class="mid"><div class="t">${esc(r.it.n)}</div><div class="s">ยอดตรงกับระบบ ไม่มี transaction</div></div></div>`;
+    if(r.diff<0){total+=r.cost;
+      return `<div class="row"><div class="dot" style="background:var(--red-soft)">📤</div><div class="mid"><div class="t">${esc(r.it.n)}</div><div class="s">ตัดใช้ ${-r.diff} ${esc(r.it.unit)} × เฉลี่ย ${num(r.it.avg).toFixed(2)} · เหลือ ${r.it.qty} ${esc(r.it.unit)}</div></div><div class="amt ex">−${thb(r.cost)}</div></div>`}
+    return `<div class="row"><div class="dot" style="background:var(--blue-soft)">📥</div><div class="mid"><div class="t">${esc(r.it.n)}</div><div class="s">นับได้เกินระบบ — ปรับเพิ่ม (เช็คว่าลืมกรอกซื้อเข้าหรือเปล่า)</div></div><div class="amt" style="color:var(--blue)">+${r.diff}</div></div>`;
+  }).join('');
+  document.getElementById('countResultTotal').textContent=thb(total);
+  document.getElementById('countResultModal').classList.add('show');
 }
 function closeModal(id){document.getElementById(id).classList.remove('show')}
 
@@ -812,7 +861,8 @@ function render(){
   const alerts=S.items.map(it=>({it,c:stockCalc(it)})).filter(x=>x.c.suggest>0);
   document.getElementById('alertCount').textContent=alerts.length?alerts.length+' รายการ':'';
   document.getElementById('stockAlerts').innerHTML=alerts.length?alerts.map(x=>
-    `<div class="alert-item">${icatOf(x.it.cat).ic} <b>${esc(x.it.n)}</b> เหลือ ${x.it.qty} ${esc(x.it.unit)} (จุดสั่ง ${x.c.rop.toFixed(1)}) → <b>สั่งเพิ่ม ${x.c.suggest} ${esc(x.it.unit)}</b> ≈ ${thb(x.c.suggest*num(x.it.avg))}</div>`
+    `<div class="alert-item">${icatOf(x.it.cat).ic} <b>${esc(x.it.n)}</b> เหลือ ${x.it.qty} ${esc(x.it.unit)} → <b>สั่งเพิ่ม ${x.c.suggest} ${esc(x.it.unit)}</b> ≈ ${thb(x.c.suggest*num(x.it.avg))}<br>
+     <span class="sub">= เผื่อใช้ ${x.c.cover} วัน (${x.c.coverUse.toFixed(1)})${x.c.leadUse>0?' + ระหว่างรอของ '+x.c.leadUse.toFixed(1):''} + กันขาด ${x.c.ss.toFixed(1)} − เหลือ ${x.it.qty}${x.c.lowData?' · <b>คำนวณจากข้อมูลแค่ '+x.c.n+' วัน อย่าเพิ่งเชื่อมาก</b>':''}</span></div>`
   ).join(''):'<div class="empty">สต๊อกยังไม่ถึงจุดสั่งซื้อ 👍</div>';
 
   const curM=today().slice(0,7),tm=txMonth(curM);
@@ -851,7 +901,7 @@ function render(){
     return `<div class="row" style="align-items:flex-start">
       <div class="mid">
         <div class="t">${icatOf(it.cat).ic} ${esc(it.n)} <span class="sub">· เฉลี่ย ${num(it.avg).toFixed(2)}/${esc(it.unit)}${it.last?' · ล่าสุด '+num(it.last).toFixed(2):''}</span></div>
-        <div class="s">ใช้ ${c.avg.toFixed(1)}/วัน · SS ${c.ss.toFixed(1)} · จุดสั่ง ${c.rop.toFixed(1)} · มูลค่า ${thb(num(it.qty)*num(it.avg))} ${c.lowData?'· <b style="color:var(--gold)">ข้อมูลน้อย</b>':''}</div>
+        <div class="s">ใช้ ${c.avg.toFixed(1)}/วัน · SS ${c.ss.toFixed(1)} · จุดสั่ง ${c.rop.toFixed(1)} · มูลค่า ${thb(num(it.qty)*num(it.avg))} ${c.lowData?'· <b style="color:var(--gold)">ข้อมูล '+c.n+' วัน (ยังหยาบ)</b>':''}</div>
         <div class="slvl"><i style="width:${ratio*100}%;background:${col}"></i></div>
         ${c.suggest>0?`<div class="s" style="color:var(--red);font-weight:700;margin-top:3px">→ สั่งเพิ่ม ${c.suggest} ${esc(it.unit)}</div>`:''}
       </div>
