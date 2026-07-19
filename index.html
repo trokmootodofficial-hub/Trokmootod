@@ -161,6 +161,7 @@ nav button.act{color:var(--brown)}
     </div>
     <div class="mini mt" id="dNote"></div>
     <div id="dWarn"></div>
+    <button class="btn mt" onclick="openCloseDay()" style="background:var(--ink);box-shadow:0 3px 0 #000">🌙 ปิดร้านวันนี้ — เช็คลิสต์จบวัน</button>
   </div>
 
   <div class="card">
@@ -184,6 +185,10 @@ nav button.act{color:var(--brown)}
       <div class="stat"><div class="v" id="mIn">฿0</div><div class="l">รายรับ</div></div>
       <div class="stat"><div class="v" id="mEx">฿0</div><div class="l">รายจ่าย+GP</div></div>
       <div class="stat"><div class="v" id="mNet">฿0</div><div class="l">กำไรสุทธิ</div></div>
+    </div>
+    <div class="grid2 mt">
+      <div class="stat"><div class="v" id="mStockVal">฿0</div><div class="l">💰 เงินแช่ในสต๊อกตอนนี้</div></div>
+      <div class="stat"><div class="v" id="mOwner">฿0</div><div class="l">👤 เจ้าของควักเดือนนี้</div></div>
     </div>
     <div class="mini mt" id="mWaste"></div>
   </div>
@@ -212,10 +217,8 @@ nav button.act{color:var(--brown)}
     <div id="expenseBox" style="display:none">
       <label>ประเภทรายจ่าย</label>
       <div class="chips" id="catChips"></div>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:12px;font-size:14px;color:var(--ink)">
-        <input type="checkbox" id="eDrawer" style="width:20px;height:20px;accent-color:var(--gold)">
-        💵 จ่ายด้วยเงินสดจากลิ้นชัก (ระบบจะหักให้เองตอนปิดยอดเงินสด)
-      </label>
+      <label>จ่ายจากไหน (สำคัญกับการเช็คเงินลิ้นชัก + รู้ว่าเจ้าของควักไปเท่าไหร่)</label>
+      <div class="chips" id="srcChips"></div>
 
       <div id="matBox" style="display:none">
         <label>ของที่ซื้อ (รับเข้าสต๊อก + คิดต้นทุนเฉลี่ยให้)</label>
@@ -254,6 +257,9 @@ nav button.act{color:var(--brown)}
         <button class="btn sm" onclick="openItemModal()">＋ เพิ่ม</button>
       </span>
     </h2>
+    <div class="stat" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span class="l">💰 มูลค่าสต๊อกรวม (เงินที่แช่อยู่ในของ)</span><span class="v" id="stockValLine">฿0</span>
+    </div>
     <div class="chips" id="icatFilter" style="margin-bottom:10px"></div>
     <div id="stockList"><div class="empty">ยังไม่มีรายการสต๊อก — กด "เพิ่ม"</div></div>
     <div class="formula">
@@ -351,6 +357,8 @@ nav button.act{color:var(--brown)}
       <button class="btn ghost" id="fbDisc" style="display:none" onclick="disconnectFB()">ตัดการเชื่อมต่อ</button>
     </div>
     <input type="file" id="impFile" accept=".json" style="display:none" onchange="doImport(this)">
+    <div class="mt"><button class="btn danger" onclick="clearAll()">🗑 ล้างข้อมูลทั้งหมด (เริ่มใหม่)</button></div>
+    <div class="mini mt">ล้างแล้วกู้ไม่ได้ — Export JSON เก็บไว้ก่อนเสมอ</div>
   </div>
 </section>
 </main>
@@ -417,6 +425,21 @@ nav button.act{color:var(--brown)}
   </div>
 </div></div>
 
+<!-- close day modal -->
+<div class="modal-bg" id="closeDayModal"><div class="modal">
+  <h3>🌙 ปิดร้านวันนี้</h3>
+  <div id="cdList"></div>
+  <div class="stat mt" style="display:flex;justify-content:space-between;align-items:center">
+    <span class="l">กำไรสุทธิวันนี้ (หักครบทุกอย่างแล้ว)</span>
+    <span class="v" id="cdProfit" style="font-size:20px">฿0</span>
+  </div>
+  <div class="grid2 mt">
+    <button class="btn ghost" onclick="copySummary()">📋 คัดลอกสรุป</button>
+    <button class="btn" style="background:#06C755;box-shadow:0 3px 0 #049a43" onclick="shareLINE()">ส่งเข้า LINE</button>
+  </div>
+  <div class="mt"><button class="btn ghost" onclick="closeModal('closeDayModal')" style="width:100%">ปิด</button></div>
+</div></div>
+
 <!-- cash close modal -->
 <div class="modal-bg" id="cashModal"><div class="modal">
   <h3>💵 ปิดยอดเงินสดท้ายวัน</h3>
@@ -444,7 +467,7 @@ nav button.act{color:var(--brown)}
     <span class="v" id="countResultTotal">฿0</span>
   </div>
   <div class="mini mt">ทุกรายการถูกเก็บเป็น transaction ถาวร ดูย้อนหลังได้ที่ปุ่ม "ตัดสต๊อก" ของแต่ละตัว</div>
-  <div class="mt"><button class="btn" onclick="closeModal('countResultModal')" style="width:100%">รับทราบ</button></div>
+  <div class="mt"><button class="btn" onclick="ackCountResult()" style="width:100%">รับทราบ</button></div>
 </div></div>
 
 <script>
@@ -460,7 +483,8 @@ const DEF_SETTINGS={shopName:'ร้านหมูทอด',openDays:30,cogsPc
 
 let S={settings:structuredClone(DEF_SETTINGS),tx:[],items:[],stx:[],cash:[]};
 let db=null,fsMode=false;
-let entryType='in',selCh='cash',selCat='mat',selICat='fresh',stockFilter='all';
+const SRCS=[{id:'drawer',n:'ลิ้นชัก',ic:'💵'},{id:'owner',n:'กระเป๋าเจ้าของ',ic:'👤'},{id:'bank',n:'โอน/บัญชี',ic:'🏦'}];
+let entryType='in',selCh='cash',selCat='mat',selICat='fresh',stockFilter='all',selSrc='drawer';
 
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
@@ -605,6 +629,8 @@ function renderChips(){
     `<button class="chip ${selCh===c.id?'on':''}" onclick="selCh='${c.id}';renderChips()">${c.ic||'💰'} ${esc(c.n)}${c.gp?` <small>(GP ${c.gp}%)</small>`:''}</button>`).join('');
   document.getElementById('catChips').innerHTML=CATS.map(c=>
     `<button class="chip ${selCat===c.id?'on':''}" onclick="selCat='${c.id}';renderChips()">${c.ic} ${c.n}</button>`).join('');
+  document.getElementById('srcChips').innerHTML=SRCS.map(s=>
+    `<button class="chip ${selSrc===s.id?'on':''}" onclick="selSrc='${s.id}';renderChips()">${s.ic} ${s.n}</button>`).join('');
   const mat=entryType==='ex'&&selCat==='mat';
   document.getElementById('matBox').style.display=mat?'':'none';
   document.getElementById('fixBox').style.display=(entryType==='ex'&&selCat==='fix')?'':'none';
@@ -645,7 +671,7 @@ async function saveEntry(){
   if(entryType==='in'){t.ch=selCh}
   else{
     t.cat=selCat;
-    if(document.getElementById('eDrawer').checked)t.drawer=true;
+    t.src=selSrc;
     if(selCat==='fix'){
       const fid=document.getElementById('eFixItem').value;
       if(fid){t.fixId=fid;const f=S.settings.fixedItems.find(x=>x.id===fid);if(f&&!note)t.note=f.n}
@@ -664,7 +690,7 @@ async function saveEntry(){
     }
   }
   await dbAdd('tx',t);
-  document.getElementById('eAmt').value='';document.getElementById('eNote').value='';document.getElementById('eQty').value='';document.getElementById('eDrawer').checked=false;
+  document.getElementById('eAmt').value='';document.getElementById('eNote').value='';document.getElementById('eQty').value='';
   render();document.getElementById('eAmt').focus();
 }
 async function delTx(id){
@@ -801,10 +827,65 @@ async function saveCount(){
   document.getElementById('countResultModal').classList.add('show');
 }
 function closeModal(id){document.getElementById(id).classList.remove('show')}
+function ackCountResult(){closeModal('countResultModal');if(window._cd){window._cd=0;openCloseDay()}}
 
+/* ---------------- CLOSE DAY / LINE / CLEAR ---------------- */
+function buildSummary(){
+  const d=today(),pl=dayPL(d),tt=txToday();
+  const dd=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+  const chSum={};tt.filter(t=>t.type==='in').forEach(t=>chSum[t.ch]=(chSum[t.ch]||0)+t.amt);
+  const chTxt=Object.keys(chSum).map(k=>chOf(k).n+' '+Math.round(chSum[k]).toLocaleString()).join(' · ');
+  const cc=S.cash.find(x=>x.date===d);
+  const cashTxt=cc?(Math.abs(cc.diff)<1?'ตรง ✓':(cc.diff<0?'ขาด ':'เกิน ')+thb(Math.abs(cc.diff))):'ยังไม่ได้นับ';
+  const alerts=S.items.map(it=>({it,c:stockCalc(it)})).filter(x=>x.c.suggest>0);
+  const ordTxt=alerts.length?alerts.map(x=>x.it.n+' '+x.c.suggest+' '+x.it.unit).join(', '):'ไม่มี';
+  const be=breakEven(),pct=be>0?Math.round(pl.net/be*100):0;
+  return `🐷 ${S.settings.shopName} — สรุป ${dd}
+ขาย ${thb(pl.gross)} (สุทธิหลัง GP ${thb(pl.net)})${be>0?` · KPI ${pct}%${pct>=100?' ✅':''}`:''}
+${chTxt||'ไม่มียอดขาย'}
+ต้นทุนของที่ใช้ ${thb(pl.mat)}${pl.useReal?'':' (ประมาณ)'} · ค่าแรง/อื่นๆ ${thb(pl.lo)} · Fix/วัน ${thb(pl.fixDay)}
+กำไรสุทธิ ${pl.profit>=0?'+':'−'}${thb(Math.abs(pl.profit))} ${pl.profit>=0?'✅':'🔻'}
+เงินสดลิ้นชัก: ${cashTxt}
+ต้องสั่งเพิ่ม: ${ordTxt}
+เงินแช่ในสต๊อก ${thb(stockValue())}`;
+}
+function openCloseDay(){
+  const d=today(),pl=dayPL(d);
+  const sold=S.tx.some(t=>t.date===d&&t.type==='in');
+  const counted=S.stx.some(x=>x.date===d&&(x.type==='out'||x.type==='waste'));
+  const cc=S.cash.find(x=>x.date===d);
+  const row=(ok,t,s,btn)=>`<div class="row"><div class="dot" style="background:${ok?'var(--green-soft)':'var(--gold-soft)'}">${ok?'✓':'○'}</div><div class="mid"><div class="t">${t}</div><div class="s">${s}</div></div>${btn||''}</div>`;
+  document.getElementById('cdList').innerHTML=
+    row(sold,'บันทึกยอดขาย',sold?'มี '+S.tx.filter(t=>t.date===d&&t.type==='in').length+' รายการ รวม '+thb(pl.gross):'ยังไม่มียอดขายวันนี้ — ลืมคีย์?')+
+    row(counted,'นับสต๊อกท้ายวัน',counted?'ตัดสต๊อกแล้ว ต้นทุนจริง '+thb(pl.mat):'ยังไม่นับ — ต้นทุนวันนี้จะเป็นค่าประมาณ',counted?'':`<button class="btn sm" onclick="window._cd=1;closeModal('closeDayModal');openCountModal()">นับเลย</button>`)+
+    row(!!cc,'ปิดยอดเงินสด',cc?(Math.abs(cc.diff)<1?'ตรง ✓':(cc.diff<0?'ขาด ':'เกิน ')+thb(Math.abs(cc.diff))):'ยังไม่นับเงินลิ้นชัก',cc?'':`<button class="btn sm" onclick="window._cd=1;closeModal('closeDayModal');openCashModal()">นับเลย</button>`);
+  const p=document.getElementById('cdProfit');
+  p.textContent='฿'+(pl.profit>=0?'+':'−')+Math.abs(Math.round(pl.profit)).toLocaleString('th-TH');
+  p.style.color=pl.profit>=0?'var(--green)':'var(--red)';
+  document.getElementById('closeDayModal').classList.add('show');
+}
+function shareLINE(){window.open('https://line.me/R/share?text='+encodeURIComponent(buildSummary()),'_blank')}
+async function copySummary(){
+  try{await navigator.clipboard.writeText(buildSummary());alert('คัดลอกแล้ว ✓')}
+  catch(e){prompt('คัดลอกข้อความนี้:',buildSummary())}
+}
+async function clearAll(){
+  if(!confirm('ล้างข้อมูลทั้งหมด: รายรับรายจ่าย สต๊อก ประวัติ เงินสด ตั้งค่า — กู้คืนไม่ได้!\nExport JSON เก็บไว้หรือยัง?'))return;
+  if(!confirm('ยืนยันอีกครั้ง: ล้างจริงๆ นะ?'))return;
+  if(fsMode){
+    for(const col of['tx','items','stx','cash']){
+      const snap=await db.collection(col).get();
+      for(const doc of snap.docs)await doc.ref.delete();
+    }
+    await db.collection('meta').doc('settings').set(structuredClone(DEF_SETTINGS));
+  }
+  localStorage.removeItem(LS_KEY);localStorage.removeItem('mootod_v1');
+  location.reload();
+}
 /* ---------------- CASH CLOSE ---------------- */
 function cashSalesToday(){return S.tx.filter(t=>t.date===today()&&t.type==='in'&&t.ch==='cash').reduce((a,t)=>a+t.amt,0)}
-function drawerPaidToday(){return S.tx.filter(t=>t.date===today()&&t.type==='ex'&&t.drawer).reduce((a,t)=>a+t.amt,0)}
+function drawerPaidToday(){return S.tx.filter(t=>t.date===today()&&t.type==='ex'&&(t.src==='drawer'||t.drawer)).reduce((a,t)=>a+t.amt,0)}
+function stockValue(){return S.items.reduce((a,i)=>a+num(i.qty)*num(i.avg),0)}
 function openCashModal(){
   const ex=S.cash.find(c=>c.date===today());
   const last=S.cash.slice().sort((a,b)=>b.ts-a.ts)[0];
@@ -840,6 +921,7 @@ async function saveCash(){
   const rec={id:ex?ex.id:uid(),date:today(),ts:Date.now(),float:f,paidOut:p,cashSales:sales,counted:c,expected,diff};
   ex?await dbUpd('cash',rec):await dbAdd('cash',rec);
   closeModal('cashModal');render();
+  if(window._cd){window._cd=0;openCloseDay()}
 }
 /* ---------------- SETTINGS ---------------- */
 function fillSettings(){
@@ -1018,6 +1100,9 @@ function render(){
   document.getElementById('mEx').textContent=thb(me+mgp);
   document.getElementById('mNet').textContent=thb(mi-mgp-me);
   document.getElementById('mWaste').textContent=mw>0?'🗑 มูลค่าของเสียเดือนนี้ '+thb(mw)+' — ถ้าเกิน 3-5% ของยอดขาย ต้องหาสาเหตุ':'';
+  document.getElementById('mStockVal').textContent=thb(stockValue());
+  document.getElementById('mOwner').textContent=thb(tm.filter(t=>t.type==='ex'&&t.src==='owner').reduce((a,t)=>a+t.amt,0));
+  document.getElementById('stockValLine').textContent=thb(stockValue());
 
   /* entry */
   renderChips();
@@ -1030,7 +1115,8 @@ function render(){
   document.getElementById('todayList').innerHTML=tl.length?tl.map(t=>{
     const isIn=t.type==='in';
     const c=isIn?chOf(t.ch):(CATS.find(x=>x.id===t.cat)||{n:t.cat,ic:'📎'});
-    const sub=[isIn&&chOf(t.ch).gp?`สุทธิ ${thb(netAmt(t))}`:'',t.qty?`+${t.qty} เข้าสต๊อก`:'',t.drawer?'💵 จ่ายจากลิ้นชัก':'',t.note].filter(Boolean).join(' · ');
+    const srcObj=!isIn?SRCS.find(s=>s.id===(t.src||(t.drawer?'drawer':''))):null;
+    const sub=[isIn&&chOf(t.ch).gp?`สุทธิ ${thb(netAmt(t))}`:'',t.qty?`+${t.qty} เข้าสต๊อก`:'',srcObj?srcObj.ic+' '+srcObj.n:'',t.note].filter(Boolean).join(' · ');
     return `<div class="row"><div class="dot" style="background:${isIn?'var(--green-soft)':'var(--red-soft)'}">${c.ic||'💰'}</div>
       <div class="mid"><div class="t">${esc(c.n)}</div><div class="s">${esc(sub)||new Date(t.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>
       <div class="amt ${isIn?'in':'ex'}">${isIn?'+':'−'}${thb(t.amt)}</div>
