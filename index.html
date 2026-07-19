@@ -17,32 +17,35 @@ const FIREBASE_CONFIG = {
 };
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#2B2118">
+<meta name="theme-color" content="#000000">
 <title>หมูทอดบัญชี — รายรับรายจ่าย + สต๊อก</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@500;600;700&family=Sarabun:wght@400;500;600;700&family=Instrument+Serif:ital@1&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{
-  --bg:#FBF6EE; --card:#FFFFFF; --ink:#2B2118; --muted:#8A7B6C;
-  --gold:#E8930C; --gold-soft:#FDEBD0; --brown:#6B3F19;
-  --green:#2E7D32; --green-soft:#E3F1E4; --red:#C62828; --red-soft:#FBE4E4;
-  --blue:#1565C0; --blue-soft:#E3EDF9; --line:#EFE6D8;
-  --r:14px; --shadow:0 2px 10px rgba(43,33,24,.07);
+  --bg:#000000; --card:#101010; --ink:#E1E0CC; --muted:#8F8D7F;
+  --cream:#DEDBC8; --gold:#E8930C; --gold-soft:rgba(232,147,12,.16); --brown:#DEDBC8;
+  --green:#4CAF6D; --green-soft:rgba(76,175,109,.16); --red:#E5544B; --red-soft:rgba(229,84,75,.14);
+  --blue:#6EA8FF; --blue-soft:rgba(110,168,255,.12); --line:#26261F;
+  --r:14px; --shadow:0 2px 18px rgba(0,0,0,.5);
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+header,nav,.modal-bg{position:relative;z-index:2}
 body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:76px}
 h1,h2,h3,.num{font-family:'Prompt',sans-serif}
 button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:inherit}
-input,select,textarea{font-family:inherit;font-size:16px;width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+input,select,textarea{font-family:inherit;font-size:16px;width:100%;padding:11px 12px;border:1.5px solid #2E2E26;border-radius:10px;background:#161613;color:var(--ink)}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold)}
 label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:12px 0 5px}
 .wrap{max-width:560px;margin:0 auto;padding:0 14px}
-header{background:var(--ink);color:#fff;padding:14px 0 12px;position:sticky;top:0;z-index:20}
+header{background:#000;color:var(--ink);border-bottom:1px solid var(--line);padding:14px 0 12px;position:sticky;top:0;z-index:20}
 header .wrap{display:flex;align-items:center;justify-content:space-between}
 .logo{display:flex;align-items:center;gap:10px}
 .logo .pig{width:38px;height:38px;background:var(--gold);border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:21px}
@@ -50,40 +53,40 @@ header .wrap{display:flex;align-items:center;justify-content:space-between}
 .logo small{display:block;font-family:'Sarabun';font-weight:400;font-size:11px;opacity:.65}
 .dbtag{font-size:11px;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.12)}
 .dbtag.on{background:var(--green);color:#fff}
-nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);z-index:30}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0D0D0B;border-top:1px solid var(--line);z-index:30}
 nav .wrap{display:flex}
 nav button{flex:1;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:11px;font-weight:600}
 nav button .ic{font-size:20px;line-height:1}
-nav button.act{color:var(--brown)}
-.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin:14px 0}
+nav button.act{color:var(--cream)}
+.card{background:var(--card);border:1px solid #1E1E18;border-radius:var(--r);box-shadow:var(--shadow);padding:16px;margin:14px 0}
 .card h2{font-size:15px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .sub{font-size:12px;color:var(--muted)}
-.kpi-num{font-size:34px;font-weight:700;letter-spacing:-.5px}
+.kpi-num{font-family:'Instrument Serif',serif;font-style:italic;font-size:40px;font-weight:400;letter-spacing:-.5px;color:var(--ink)}
 .kpi-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
-.bar{height:14px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar{height:14px;background:#22221C;border-radius:99px;overflow:hidden}
 .bar i{display:block;height:100%;border-radius:99px;background:var(--gold);transition:width .5s}
 .bar i.ok{background:var(--green)}
 .badge{font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
-.b-ok{background:var(--green-soft);color:var(--green)}
-.b-warn{background:var(--gold-soft);color:#A66300}
-.b-bad{background:var(--red-soft);color:var(--red)}
+.b-ok{background:var(--green-soft);color:#7EDB97}
+.b-warn{background:var(--gold-soft);color:#F0A93C}
+.b-bad{background:var(--red-soft);color:#FF8B83}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-.stat{background:var(--bg);border-radius:10px;padding:10px 12px}
+.stat{background:#181814;border:1px solid #1E1E18;border-radius:10px;padding:10px 12px}
 .stat .v{font-family:'Prompt';font-weight:600;font-size:17px}
 .stat .l{font-size:11.5px;color:var(--muted)}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{padding:9px 15px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-weight:600;font-size:14px;color:var(--muted)}
-.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
-.seg{display:flex;background:var(--line);border-radius:12px;padding:4px;gap:4px}
+.chip{padding:9px 15px;border-radius:99px;border:1.5px solid #2E2E26;background:transparent;font-weight:600;font-size:14px;color:var(--muted)}
+.chip.on{background:var(--cream);border-color:var(--cream);color:#0B0B09}
+.seg{display:flex;background:#1B1B16;border-radius:12px;padding:4px;gap:4px}
 .seg button{flex:1;padding:10px;border-radius:9px;font-weight:700;font-size:15px;color:var(--muted)}
 .seg button.on-in{background:var(--green);color:#fff}
 .seg button.on-ex{background:var(--red);color:#fff}
-.btn{display:block;width:100%;padding:14px;border-radius:12px;background:var(--gold);color:#fff;font-weight:700;font-size:16px;font-family:'Prompt';box-shadow:0 3px 0 #B87100}
+.btn{display:block;width:100%;padding:14px;border-radius:12px;background:var(--cream);color:#0B0B09;font-weight:700;font-size:16px;font-family:'Prompt';box-shadow:0 3px 0 #96937F}
 .btn:active{transform:translateY(2px);box-shadow:none}
 .btn.sm{padding:8px 14px;width:auto;display:inline-block;font-size:13px;box-shadow:none;border-radius:9px}
-.btn.ghost{background:#fff;color:var(--brown);border:1.5px solid var(--brown);box-shadow:none}
-.btn.danger{background:var(--red);box-shadow:0 3px 0 #8E1C1C}
+.btn.ghost{background:transparent;color:var(--cream);border:1.5px solid #4A4940;box-shadow:none}
+.btn.danger{background:var(--red);color:#fff;box-shadow:0 3px 0 #8E1C1C}
 .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
 .row:last-child{border-bottom:none}
 .row .dot{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
@@ -91,20 +94,20 @@ nav button.act{color:var(--brown)}
 .row .t{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .row .s{font-size:11.5px;color:var(--muted)}
 .row .amt{font-family:'Prompt';font-weight:600;font-size:15px}
-.amt.in{color:var(--green)} .amt.ex{color:var(--red)}
+.amt.in{color:#7EDB97} .amt.ex{color:#FF8B83}
 .del{color:var(--muted);font-size:17px;padding:6px}
-.slvl{height:7px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+.slvl{height:7px;background:#22221C;border-radius:99px;overflow:hidden;margin-top:6px}
 .slvl i{display:block;height:100%;border-radius:99px}
 .alert-item{background:var(--red-soft);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:13.5px}
 .hbar{margin:9px 0}
 .hbar .lab{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
-.hbar .tr{height:10px;background:var(--line);border-radius:99px;overflow:hidden}
+.hbar .tr{height:10px;background:#22221C;border-radius:99px;overflow:hidden}
 .hbar .tr i{display:block;height:100%;border-radius:99px}
 .modal-bg{position:fixed;inset:0;background:rgba(43,33,24,.5);z-index:50;display:none;align-items:flex-end;justify-content:center}
 .modal-bg.show{display:flex}
-.modal{background:#fff;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px 26px;max-height:88vh;overflow-y:auto}
+.modal{background:#111110;border:1px solid #24241D;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px 26px;max-height:88vh;overflow-y:auto}
 .modal h3{font-size:16px;margin-bottom:6px}
-.formula{background:var(--blue-soft);border-radius:10px;padding:10px 12px;font-size:12.5px;color:var(--blue);margin-top:10px;line-height:1.6}
+.formula{background:var(--blue-soft);border:1px solid rgba(110,168,255,.18);border-radius:10px;padding:10px 12px;font-size:12.5px;color:#9FC2FF;margin-top:10px;line-height:1.6}
 .tabpage{display:none}.tabpage.show{display:block}
 .empty{text-align:center;color:var(--muted);padding:24px 0;font-size:13.5px}
 .mini{font-size:12px;color:var(--muted);line-height:1.5}
@@ -160,7 +163,8 @@ nav button.act .ic{animation:pop .3s ease}
 <!-- ============ DASHBOARD ============ -->
 <section class="tabpage show" id="pg-dash">
   <div class="card">
-    <h2>เป้าวันนี้ (จุดคุ้มทุน) <span class="badge" id="kpiBadge">—</span></h2>
+    <h2><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">เป้าวัน <input type="date" id="dashDate" onchange="render()" style="width:auto;padding:5px 8px;font-size:13px"></span> <span class="badge" id="kpiBadge">—</span></h2>
+    <div class="mini" id="dashBack" style="margin-bottom:6px"></div>
     <div class="kpi-row">
       <div><div class="kpi-num" id="kpiPct">0%</div><div class="sub">ของจุดคุ้มทุน <b id="kpiTarget">—</b> บาท/วัน</div></div>
       <div class="right"><div class="num" style="font-size:20px;font-weight:600" id="kpiNet">฿0</div><div class="sub">ยอดสุทธิ (หลังหัก GP)</div></div>
@@ -180,7 +184,7 @@ nav button.act .ic{animation:pop .3s ease}
     </div>
     <div class="mini mt" id="dNote"></div>
     <div id="dWarn"></div>
-    <button class="btn mt" onclick="openCloseDay()" style="background:var(--ink);box-shadow:0 3px 0 #000">🌙 ปิดร้านวันนี้ — เช็คลิสต์จบวัน</button>
+    <button class="btn mt" onclick="openCloseDay()" style="background:#212121;color:#E1E0CC;box-shadow:0 3px 0 #000">🌙 ปิดร้านวันนี้ — เช็คลิสต์จบวัน</button>
   </div>
 
   <div class="card">
@@ -199,7 +203,7 @@ nav button.act .ic{animation:pop .3s ease}
   </div>
 
   <div class="card">
-    <h2>เดือนนี้</h2>
+    <h2 id="mTitle">เดือนนี้</h2>
     <div class="grid3">
       <div class="stat"><div class="v" id="mIn">฿0</div><div class="l">รายรับ</div></div>
       <div class="stat"><div class="v" id="mEx">฿0</div><div class="l">รายจ่าย+GP</div></div>
@@ -355,8 +359,10 @@ nav button.act .ic{animation:pop .3s ease}
     <label>ชื่อร้าน</label><input id="sName">
     <div class="grid2">
       <div><label>วันเปิดร้าน/เดือน</label><input type="number" id="sDays" inputmode="numeric" placeholder="30"></div>
-      <div><label>% ต้นทุนวัตถุดิบ (COGS)</label><input type="number" id="sCogs" inputmode="decimal" placeholder="55"></div>
+      <div><label>ขาย 100 บาท เป็นค่าวัตถุดิบกี่บาท?</label><input type="number" id="sCogs" inputmode="decimal" placeholder="เช่น 55"></div>
     </div>
+    <div class="mini mt" id="cogsSimple"></div>
+    <div class="mt"><button class="btn ghost sm" onclick="autoCogs()">🪄 ไม่รู้จะใส่เท่าไหร่? ให้ระบบคำนวณจากข้อมูลจริง</button></div>
     <div class="formula">
       🎯 <b>จุดคุ้มทุน/วัน = (Fix Cost รวม ÷ วันเปิด) ÷ (1 − COGS%)</b><br>
       <span id="bePreview">—</span><br>
@@ -457,6 +463,24 @@ nav button.act .ic{animation:pop .3s ease}
   </div>
 </div></div>
 
+<!-- edit tx modal -->
+<div class="modal-bg" id="editTxModal"><div class="modal">
+  <h3>✎ แก้ไขรายการ</h3>
+  <input type="hidden" id="etId">
+  <div class="grid2">
+    <div><label>จำนวนเงิน</label><input type="number" id="etAmt" inputmode="decimal" style="font-family:'Prompt';font-size:22px;text-align:center"></div>
+    <div><label>วันที่</label><input type="date" id="etDate"></div>
+  </div>
+  <div id="etChBox" style="display:none"><label>ช่องทาง</label><div class="chips" id="etChChips"></div></div>
+  <div id="etSrcBox" style="display:none"><label>จ่ายจากไหน</label><div class="chips" id="etSrcChips"></div></div>
+  <label>โน้ต</label><input id="etNote">
+  <div class="mini mt" id="etWarn"></div>
+  <div class="grid2 mt">
+    <button class="btn ghost" onclick="closeModal('editTxModal')">ยกเลิก</button>
+    <button class="btn" onclick="saveEditTx()">บันทึกการแก้ไข</button>
+  </div>
+</div></div>
+
 <!-- close day modal -->
 <div class="modal-bg" id="closeDayModal"><div class="modal">
   <h3>🌙 ปิดร้านวันนี้</h3>
@@ -467,7 +491,7 @@ nav button.act .ic{animation:pop .3s ease}
   </div>
   <div class="grid2 mt">
     <button class="btn ghost" onclick="copySummary()">📋 คัดลอกสรุป</button>
-    <button class="btn" style="background:#06C755;box-shadow:0 3px 0 #049a43" onclick="shareLINE()">ส่งเข้า LINE</button>
+    <button class="btn" style="background:#06C755;color:#fff;box-shadow:0 3px 0 #049a43" onclick="shareLINE()">ส่งเข้า LINE</button>
   </div>
   <div class="mt"><button class="btn ghost" onclick="closeModal('closeDayModal')" style="width:100%">ปิด</button></div>
 </div></div>
@@ -725,6 +749,51 @@ async function saveEntry(){
   document.getElementById('eAmt').value='';document.getElementById('eNote').value='';document.getElementById('eQty').value='';
   render();document.getElementById('eAmt').focus();
 }
+let etSelCh='cash',etSelSrc='drawer';
+function openEditTx(id){
+  const t=S.tx.find(x=>x.id===id);
+  if(!t)return;
+  document.getElementById('etId').value=id;
+  document.getElementById('etAmt').value=t.amt;
+  document.getElementById('etDate').value=t.date;
+  document.getElementById('etNote').value=t.note||'';
+  const isIn=t.type==='in';
+  document.getElementById('etChBox').style.display=isIn?'':'none';
+  document.getElementById('etSrcBox').style.display=isIn?'none':'';
+  if(isIn){
+    etSelCh=t.ch;
+    renderEtCh();
+  }else{
+    etSelSrc=t.src||(t.drawer?'drawer':'');
+    document.getElementById('etSrcChips').innerHTML=SRCS.map(s=>
+      `<button class="chip ${etSelSrc===s.id?'on':''}" onclick="etSelSrc='${s.id}';renderEtSrc()">${s.ic} ${s.n}</button>`).join('');
+  }
+  document.getElementById('etWarn').innerHTML=t.itemId
+    ?'⚠️ รายการนี้เคยรับเข้าสต๊อกแล้ว — แก้ "จำนวนเงิน" ตรงนี้จะ<b>ไม่ย้อนแก้</b>ต้นทุนเฉลี่ย/ยอดสต๊อกที่คำนวณไปแล้ว ถ้าต้นทุนเพี้ยนมาก ให้ไปแก้ที่ต้นทุนเฉลี่ยในหน้าสต๊อกแทน'
+    :'';
+  document.getElementById('editTxModal').classList.add('show');
+}
+function renderEtSrc(){
+  document.getElementById('etSrcChips').innerHTML=SRCS.map(s=>
+    `<button class="chip ${etSelSrc===s.id?'on':''}" onclick="etSelSrc='${s.id}';renderEtSrc()">${s.ic} ${s.n}</button>`).join('');
+}
+function renderEtCh(){
+  document.getElementById('etChChips').innerHTML=S.settings.channels.map(c=>
+    `<button class="chip ${etSelCh===c.id?'on':''}" onclick="etSelCh='${c.id}';renderEtCh()">${c.ic||'💰'} ${esc(c.n)}</button>`).join('');
+}
+async function saveEditTx(){
+  const id=document.getElementById('etId').value;
+  const t=S.tx.find(x=>x.id===id);
+  if(!t)return;
+  const amt=num(document.getElementById('etAmt').value);
+  if(amt<=0)return alert('ใส่จำนวนเงินก่อน');
+  t.amt=amt;
+  t.date=document.getElementById('etDate').value||t.date;
+  t.note=document.getElementById('etNote').value.trim();
+  if(t.type==='in')t.ch=etSelCh;else t.src=etSelSrc;
+  await dbUpd('tx',t);
+  closeModal('editTxModal');render();
+}
 async function delTx(id){
   const t=S.tx.find(x=>x.id===id);
   if(!confirm('ลบรายการนี้?'+(t&&t.itemId?' (สต๊อกที่รับเข้าไปแล้วจะไม่ย้อนกลับ — ไปปรับที่หน้าสต๊อกเอง)':'')))return;
@@ -977,6 +1046,8 @@ function fillSettings(){
 function previewBE(){
   const fix=totalFix(),days=num(document.getElementById('sDays').value)||30,cogs=num(document.getElementById('sCogs').value);
   const m=1-cogs/100;
+  document.getElementById('cogsSimple').innerHTML=(cogs>0&&cogs<100)
+    ?`แปลว่า: ทุกๆ 100 บาทที่ขายได้ → เป็นค่าหมู/แป้ง/น้ำมัน/ถุง <b>${cogs} บาท</b> · เหลือ <b>${100-cogs} บาท</b> ไว้จ่ายค่าเช่า ค่าแรง และเป็นกำไร`:'';
   document.getElementById('bePreview').innerHTML=(fix&&m>0)
     ?`(${fix.toLocaleString()} ÷ ${days}) ÷ (1 − ${cogs}%) = <b>ต้องขายวันละ ${thb(fix/days/m)}</b>`
     :'เพิ่มรายการ Fix Cost และใส่ % วัตถุดิบก่อน';
@@ -992,6 +1063,16 @@ async function addFixItem(){
 async function delFixItem(i){
   if(!confirm('ลบ "'+S.settings.fixedItems[i].n+'" ออกจาก Fix Cost?'))return;
   S.settings.fixedItems.splice(i,1);await dbSettings();render();
+}
+function autoCogs(){
+  const cut=new Date();cut.setDate(cut.getDate()-30);
+  const cutS=cut.toISOString().slice(0,10);
+  const mat=S.stx.filter(x=>(x.type==='out'||x.type==='waste')&&x.date>=cutS).reduce((a,x)=>a+num(x.cost),0);
+  const net=S.tx.filter(t=>t.type==='in'&&t.date>=cutS).reduce((a,t)=>a+netAmt(t),0);
+  if(mat<=0||net<=0)return alert('ยังไม่มีข้อมูลพอคำนวณ — ต้องมีทั้งยอดขายและการนับสต๊อกท้ายวันก่อน\nระหว่างนี้ใส่ 55 ไปก่อนได้ (ค่ากลางๆ ของร้านอาหารไทย) แล้วค่อยกลับมากดปุ่มนี้ใหม่หลังใช้งานสัก 1-2 สัปดาห์');
+  const p=Math.round(mat/net*100);
+  document.getElementById('sCogs').value=p;previewBE();
+  alert('คำนวณจากข้อมูลจริง 30 วันล่าสุด:\nขายสุทธิ '+thb(net)+' · ใช้ของไป '+thb(mat)+'\n= ขาย 100 เป็นค่าของ '+p+' บาท\n\nใส่ให้แล้ว อย่าลืมกด "บันทึกตั้งค่า"');
 }
 async function saveSettings(){
   const st=S.settings;
@@ -1056,10 +1137,15 @@ function render(){
   if(!document.getElementById('repMonth').value)document.getElementById('repMonth').value=today().slice(0,7);
 
   /* dashboard */
-  const tt=txToday(),be=breakEven();
+  const ddEl=document.getElementById('dashDate');
+  if(!ddEl.value)ddEl.value=today();
+  const dd=ddEl.value;
+  document.getElementById('dashBack').innerHTML=dd!==today()
+    ?`👁 กำลังดูข้อมูลย้อนหลัง <button class="chip" style="padding:3px 12px;font-size:12px" onclick="document.getElementById('dashDate').value='';render()">← กลับวันนี้</button>`:'';
+  const tt=S.tx.filter(t=>t.date===dd),be=breakEven();
   const gross=tt.filter(t=>t.type==='in').reduce((a,t)=>a+t.amt,0);
   const net=tt.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
-  const sToday=S.stx.filter(x=>x.date===today());
+  const sToday=S.stx.filter(x=>x.date===dd);
   const matUsed=sToday.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
   const wasteToday=sToday.filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
   const useReal=matUsed>0;
@@ -1074,14 +1160,14 @@ function render(){
   const badge=document.getElementById('kpiBadge');
   if(be<=0){badge.textContent='ยังไม่ตั้งค่า';badge.className='badge b-warn'}
   else if(pct>=100){badge.textContent='✓ On Target';badge.className='badge b-ok';
-    if(window._kpiDay!==today()){window._kpiDay=today();confetti()}}
+    if(dd===today()&&window._kpiDay!==today()){window._kpiDay=today();confetti()}}
   else if(pct>=70){badge.textContent='ใกล้แล้ว';badge.className='badge b-warn'}
   else{badge.textContent='ยังห่างเป้า';badge.className='badge b-bad'}
   document.getElementById('dGross').textContent=thb(gross);
   document.getElementById('dMat').textContent=thb(matCost);
   document.getElementById('dMatL').textContent=useReal?'ต้นทุนของที่ใช้ (จริง)':'ต้นทุนของ (ประมาณ '+num(st.cogsPct)+'%)';
   document.getElementById('dProfit').textContent=thb(gp);
-  const pl=dayPL(today());
+  const pl=dayPL(dd);
   document.getElementById('dCalc').innerHTML=`= ขายสุทธิ ${thb(pl.net)} − ต้นทุนของ ${thb(pl.mat)}${pl.useReal?'':' (ประมาณ)'} − ค่าแรง/อื่นๆ ${thb(pl.lo)} − Fix/วัน ${thb(pl.fixDay)} · หมวด 🛠️ ลงทุน ไม่ถูกหักตรงนี้`;
   const dnt=document.getElementById('dNetToday');
   dnt.style.color=pl.profit>=0?'var(--green)':'var(--red)';
@@ -1091,7 +1177,7 @@ function render(){
     :'ยังไม่มีการตัดสต๊อกวันนี้ — ต้นทุนใช้ % ประมาณการไปก่อน')+' · ค่าซื้อของเข้าสต๊อกไม่ถูกหักในกำไร (หักตอนใช้แทน กันนับซ้ำ)';
 
   /* เงินสดวันนี้ */
-  const cc=S.cash.find(x=>x.date===today());
+  const cc=S.cash.find(x=>x.date===dd);
   document.getElementById('cashStatus').innerHTML=cc
     ?`<div class="grid3">
         <div class="stat"><div class="v">${thb(cc.expected)}</div><div class="l">ควรมี</div></div>
@@ -1124,7 +1210,8 @@ function render(){
      <span class="sub">= เผื่อใช้ ${x.c.cover} วัน (${x.c.coverUse.toFixed(1)})${x.c.leadUse>0?' + ระหว่างรอของ '+x.c.leadUse.toFixed(1):''} + กันขาด ${x.c.ss.toFixed(1)} − เหลือ ${x.it.qty}${x.c.lowData?' · <b>คำนวณจากข้อมูลแค่ '+x.c.n+' วัน อย่าเพิ่งเชื่อมาก</b>':''}</span></div>`
   ).join(''):'<div class="empty">สต๊อกยังไม่ถึงจุดสั่งซื้อ 👍</div>';
 
-  const curM=today().slice(0,7),tm=txMonth(curM);
+  const curM=dd.slice(0,7),tm=txMonth(curM);
+  document.getElementById('mTitle').textContent='เดือน '+new Date(dd+'T00:00').toLocaleDateString('th-TH',{month:'long'});
   const mi=tm.filter(t=>t.type==='in').reduce((a,t)=>a+t.amt,0);
   const mgp=tm.filter(t=>t.type==='in').reduce((a,t)=>a+(t.amt-netAmt(t)),0);
   const me=tm.filter(t=>t.type==='ex').reduce((a,t)=>a+t.amt,0);
@@ -1151,8 +1238,8 @@ function render(){
     const srcObj=!isIn?SRCS.find(s=>s.id===(t.src||(t.drawer?'drawer':''))):null;
     const sub=[isIn&&chOf(t.ch).gp?`สุทธิ ${thb(netAmt(t))}`:'',t.qty?`+${t.qty} เข้าสต๊อก`:'',srcObj?srcObj.ic+' '+srcObj.n:'',t.note].filter(Boolean).join(' · ');
     return `<div class="row"><div class="dot" style="background:${isIn?'var(--green-soft)':'var(--red-soft)'}">${c.ic||'💰'}</div>
-      <div class="mid"><div class="t">${esc(c.n)}</div><div class="s">${esc(sub)||new Date(t.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>
-      <div class="amt ${isIn?'in':'ex'}">${isIn?'+':'−'}${thb(t.amt)}</div>
+      <div class="mid" style="cursor:pointer" onclick="openEditTx('${t.id}')"><div class="t">${esc(c.n)} <span class="sub">✎ แก้ไข</span></div><div class="s">${esc(sub)||new Date(t.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>
+      <div class="amt ${isIn?'in':'ex'}" style="cursor:pointer" onclick="openEditTx('${t.id}')">${isIn?'+':'−'}${thb(t.amt)}</div>
       <button class="del" onclick="delTx('${t.id}')">✕</button></div>`;
   }).join(''):'<div class="empty">ยังไม่มีรายการ</div>';
 
@@ -1242,11 +1329,11 @@ function mkChart(id,type,data,opts){
   if(CH[id]){CH[id].data=data;CH[id].options=opts;CH[id].update('none');return}
   CH[id]=new Chart(el,{type,data,options:opts});
 }
-const PAL=['#E8930C','#2E7D32','#1565C0','#C62828','#6B3F19','#8E24AA','#00897B','#F4511E'];
+const PAL=['#DEDBC8','#E8930C','#7EDB97','#6EA8FF','#FF8B83','#B08BD9','#5FC9BA','#F0A93C'];
 function renderCharts(m,rm,rs){
   if(!window.Chart)return;
   Chart.defaults.font.family='Sarabun';
-  Chart.defaults.color='#8A7B6C';
+  Chart.defaults.color='#8F8D7F';
   /* 1) รายวัน: ขายสุทธิ vs ต้นทุนรวม + เส้นคุ้มทุน */
   const dayset={};rm.forEach(t=>dayset[t.date]=1);
   rs.filter(x=>x.type==='out'||x.type==='waste').forEach(x=>dayset[x.date]=1);
@@ -1258,17 +1345,17 @@ function renderCharts(m,rm,rs){
     labels:days.map(d=>new Date(d+'T00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short'})),
     datasets:[
       {label:'ขายสุทธิ',data:rev,backgroundColor:'#E8930C',borderRadius:6},
-      {label:'ทุน+จ่าย+Fix',data:cost,backgroundColor:'#D9CBB8',borderRadius:6},
+      {label:'ทุน+จ่าย+Fix',data:cost,backgroundColor:'#3A3A32',borderRadius:6},
       ...(be>0?[{type:'line',label:'จุดคุ้มทุน',data:days.map(()=>Math.round(be)),borderColor:'#C62828',borderDash:[6,4],borderWidth:2,pointRadius:0}]:[])
     ]},
     {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:12,font:{size:11}}}},
-     scales:{y:{beginAtZero:true,grid:{color:'#EFE6D8'}},x:{grid:{display:false}}}});
+     scales:{y:{beginAtZero:true,grid:{color:'#22221C'}},x:{grid:{display:false}}}});
   /* 2) โดนัทช่องทาง */
   const rc={};rm.filter(t=>t.type==='in').forEach(t=>rc[t.ch]=(rc[t.ch]||0)+t.amt);
   const ck=Object.keys(rc).sort((a,b)=>rc[b]-rc[a]);
   mkChart('chChannel','doughnut',{
     labels:ck.map(k=>chOf(k).n),
-    datasets:[{data:ck.map(k=>Math.round(rc[k])),backgroundColor:PAL,borderWidth:2,borderColor:'#fff'}]},
+    datasets:[{data:ck.map(k=>Math.round(rc[k])),backgroundColor:PAL,borderWidth:2,borderColor:'#101010'}]},
     {responsive:true,maintainAspectRatio:false,cutout:'62%',
      plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}});
   /* 3) โดนัทรายจ่าย (รวม GP) */
@@ -1279,7 +1366,7 @@ function renderCharts(m,rm,rs){
   const eName=id=>id==='gp'?'GP เดลิเวอรี่':((CATS.find(c=>c.id===id)||{n:id}).n);
   mkChart('chExp','doughnut',{
     labels:ek.map(eName),
-    datasets:[{data:ek.map(k=>Math.round(re[k])),backgroundColor:['#C62828','#E8930C','#6B3F19','#1565C0','#8E24AA','#00897B'],borderWidth:2,borderColor:'#fff'}]},
+    datasets:[{data:ek.map(k=>Math.round(re[k])),backgroundColor:['#C62828','#E8930C','#6B3F19','#1565C0','#8E24AA','#00897B'],borderWidth:2,borderColor:'#101010'}]},
     {responsive:true,maintainAspectRatio:false,cutout:'62%',
      plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}});
 }
