@@ -24,6 +24,7 @@ const FIREBASE_CONFIG = {
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
 :root{
   --bg:#FBF6EE; --card:#FFFFFF; --ink:#2B2118; --muted:#8A7B6C;
@@ -114,7 +115,22 @@ nav button.act{color:var(--brown)}
 .day-row{display:grid;grid-template-columns:82px 1fr 1fr 1fr;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
 .day-row:last-child{border-bottom:none}
 .day-row .num{font-size:13.5px;font-weight:600;text-align:right}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.tabpage.show .card{animation:rise .34s ease both}
+.tabpage.show .card:nth-child(2){animation-delay:.05s}
+.tabpage.show .card:nth-child(3){animation-delay:.1s}
+.tabpage.show .card:nth-child(4){animation-delay:.15s}
+.tabpage.show .card:nth-child(5){animation-delay:.2s}
+.tabpage.show .card:nth-child(n+6){animation-delay:.25s}
+@keyframes pigbob{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(6deg) translateY(-2px)}}
+.logo .pig{animation:pigbob 3.2s ease-in-out infinite;transform-origin:50% 80%}
+.chip,.btn,.del{transition:transform .12s ease}
+.chip:active,.btn.sm:active{transform:scale(.93)}
+.chip:hover{transform:translateY(-1px)}
+@keyframes pop{0%{transform:scale(.5)}60%{transform:scale(1.2)}100%{transform:scale(1)}}
+.badge.b-ok{animation:pop .45s ease}
+nav button.act .ic{animation:pop .3s ease}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 /* ===== Desktop layout ===== */
 @media(min-width:980px){
   .wrap{max-width:1100px}
@@ -155,9 +171,12 @@ nav button.act{color:var(--brown)}
       <div class="stat"><div class="v" id="dMat">฿0</div><div class="l" id="dMatL">ต้นทุนของที่ใช้</div></div>
       <div class="stat"><div class="v" id="dProfit">฿0</div><div class="l">กำไรขั้นต้น</div></div>
     </div>
-    <div class="stat mt" style="display:flex;justify-content:space-between;align-items:center">
-      <span class="l">กำไรสุทธิวันนี้ (หัก ค่าแรง/อื่นๆ + Fix Cost <b id="dFixDay">฿0</b>/วัน แล้ว)</span>
-      <span class="v" id="dNetToday" style="font-size:20px">฿0</span>
+    <div class="stat mt">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span class="l">กำไรสุทธิวันนี้ (เชิงบัญชี)</span>
+        <span class="v" id="dNetToday" style="font-size:20px">฿0</span>
+      </div>
+      <div class="mini" id="dCalc" style="margin-top:4px"></div>
     </div>
     <div class="mini mt" id="dNote"></div>
     <div id="dWarn"></div>
@@ -184,7 +203,7 @@ nav button.act{color:var(--brown)}
     <div class="grid3">
       <div class="stat"><div class="v" id="mIn">฿0</div><div class="l">รายรับ</div></div>
       <div class="stat"><div class="v" id="mEx">฿0</div><div class="l">รายจ่าย+GP</div></div>
-      <div class="stat"><div class="v" id="mNet">฿0</div><div class="l">กำไรสุทธิ</div></div>
+      <div class="stat"><div class="v" id="mNet">฿0</div><div class="l">เงินสด รับ−จ่ายจริง</div></div>
     </div>
     <div class="grid2 mt">
       <div class="stat"><div class="v" id="mStockVal">฿0</div><div class="l">💰 เงินแช่ในสต๊อกตอนนี้</div></div>
@@ -279,21 +298,34 @@ nav button.act{color:var(--brown)}
     <div class="grid3">
       <div class="stat"><div class="v" id="rIn">฿0</div><div class="l">รายรับรวม</div></div>
       <div class="stat"><div class="v" id="rGP">฿0</div><div class="l">โดนหัก GP</div></div>
-      <div class="stat"><div class="v" id="rNet">฿0</div><div class="l">กำไรสุทธิ</div></div>
+      <div class="stat"><div class="v" id="rNet">฿0</div><div class="l">เงินสด รับ−จ่ายจริง</div></div>
     </div>
     <div class="grid2 mt">
       <div class="stat"><div class="v" id="rMat">฿0</div><div class="l">ต้นทุนของที่ใช้จริง (จากสต๊อก)</div></div>
       <div class="stat"><div class="v" id="rWaste" style="color:var(--red)">฿0</div><div class="l">มูลค่าของเสีย/ทิ้ง</div></div>
     </div>
     <div class="mini mt" id="rCogsLine"></div>
-    <div class="mini mt">กำไรสุทธิ = รายรับ − GP − รายจ่ายที่บันทึกทั้งหมด</div>
+    <div class="mini mt">💡 <b>"เงินสด รับ−จ่ายจริง" กับ "กำไรรายวัน" คนละตัวกัน อย่าเอามาเทียบตรงๆ</b> — ตัวแรกคือเงินเข้าออกจริง (ไม่หัก Fix เฉลี่ย/ไม่ประมาณต้นทุน) ตัวหลังคือกำไรเชิงบัญชีที่กระจาย Fix Cost เป็นรายวันและคิดต้นทุนตอนใช้ของ ตัวหลังใช้ตอบ "ขายเท่านี้คุ้มไหม" ตัวแรกใช้ตอบ "เงินในมือเหลือเท่าไหร่"</div>
+  </div>
+  <div class="card">
+    <h2>📈 รายวัน: ขายสุทธิ vs ทุน+จ่าย+Fix</h2>
+    <div style="height:235px"><canvas id="chDaily"></canvas></div>
+    <div class="mini mt">เส้นประ = จุดคุ้มทุน/วัน — แท่งทองโผล่พ้นเส้นเมื่อไหร่ = วันนั้นรอด</div>
+  </div>
+  <div class="card">
+    <h2>🍩 ขายทางไหนเยอะสุด (เดือนนี้)</h2>
+    <div style="height:225px"><canvas id="chChannel"></canvas></div>
+  </div>
+  <div class="card">
+    <h2>💸 เงินไหลออกไปไหน (เดือนนี้)</h2>
+    <div style="height:225px"><canvas id="chExp"></canvas></div>
   </div>
   <div class="card">
     <h2>รายวัน — วันไหนกำไร วันไหนเจ๊ง</h2>
     <div class="mini" id="repDailySum" style="margin-bottom:6px"></div>
     <div class="day-row" style="border-bottom:2px solid var(--ink);font-size:11.5px;font-weight:700;color:var(--muted)"><span>วันที่</span><span class="right">ขายสุทธิ</span><span class="right">ทุน+จ่าย+Fix</span><span class="right">กำไร</span></div>
     <div id="repDaily"><div class="empty">ไม่มีข้อมูล</div></div>
-    <div class="mini mt">กำไร/วัน = ขายสุทธิหลัง GP − ต้นทุนของที่ใช้ (ตัวจริงจากสต๊อก ถ้าวันนั้นไม่ได้ตัดใช้ % ประมาณ มีเครื่องหมาย ~) − ค่าแรง/อื่นๆ วันนั้น − Fix Cost เฉลี่ย/วัน · <b>ค่าซื้อของเข้าสต๊อกไม่หักตรงนี้</b> เพราะหักตอน "ใช้" แล้ว หักซ้ำ = นับสองรอบ · จ่าย Fix Cost จริงก็ไม่หักซ้ำ เพราะกระจายเป็นรายวันให้แล้ว</div>
+    <div class="mini mt">กำไร/วัน = ขายสุทธิหลัง GP − ต้นทุนของที่ใช้ (ตัวจริงจากสต๊อก ถ้าวันนั้นไม่ได้ตัดใช้ % ประมาณ มีเครื่องหมาย ~) − ค่าแรง/อื่นๆ วันนั้น − Fix Cost เฉลี่ย/วัน · <b>ค่าซื้อของเข้าสต๊อกไม่หักตรงนี้</b> เพราะหักตอน "ใช้" แล้ว หักซ้ำ = นับสองรอบ · <b>หมวด 🛠️ ลงทุน/ของถาวร ก็ไม่หัก</b> (ของลงร้านครั้งเดียว ไม่ใช่ต้นทุนรายวัน แต่ยังนับใน "เงินสด รับ−จ่ายจริง") · จ่าย Fix Cost จริงก็ไม่หักซ้ำ เพราะกระจายเป็นรายวันให้แล้ว</div>
   </div>
   <div class="card"><h2>รายรับตามช่องทาง</h2><div id="repChannels"><div class="empty">ไม่มีข้อมูล</div></div></div>
   <div class="card"><h2>รายจ่ายตามประเภท</h2><div id="repCats"><div class="empty">ไม่มีข้อมูล</div></div></div>
@@ -474,7 +506,7 @@ nav button.act{color:var(--brown)}
 /* FIREBASE_CONFIG ถูกย้ายไปไว้บนสุดของไฟล์แล้ว (บรรทัดที่ ~10) */
 
 const LS_KEY='mootod_v2', FB_KEY='mootod_fbcfg';
-const CATS=[{id:'mat',n:'ซื้อของเข้าสต๊อก',ic:'🛒'},{id:'labor',n:'ค่าแรงรายวัน',ic:'👷'},{id:'fix',n:'จ่าย Fix Cost',ic:'🏠'},{id:'other',n:'อื่นๆ',ic:'📎'}];
+const CATS=[{id:'mat',n:'ซื้อของเข้าสต๊อก',ic:'🛒'},{id:'labor',n:'ค่าแรงรายวัน',ic:'👷'},{id:'fix',n:'จ่าย Fix Cost',ic:'🏠'},{id:'invest',n:'ลงทุน/ของถาวร',ic:'🛠️'},{id:'other',n:'อื่นๆ',ic:'📎'}];
 const ICATS=[{id:'fresh',n:'ของสด',ic:'🥩'},{id:'dry',n:'ของแห้ง/เครื่องปรุง',ic:'🧂'},{id:'pack',n:'บรรจุภัณฑ์',ic:'🛍️'},{id:'supply',n:'ของใช้สิ้นเปลือง',ic:'🧴'}];
 const DEF_SETTINGS={shopName:'ร้านหมูทอด',openDays:30,cogsPct:55,fixedItems:[],
   channels:[{id:'cash',n:'เงินสด',gp:0,ic:'💵'},{id:'transfer',n:'เงินโอน',gp:0,ic:'📱'},
@@ -1041,7 +1073,8 @@ function render(){
   bar.style.width=Math.min(100,pct)+'%';bar.className=pct>=100?'ok':'';
   const badge=document.getElementById('kpiBadge');
   if(be<=0){badge.textContent='ยังไม่ตั้งค่า';badge.className='badge b-warn'}
-  else if(pct>=100){badge.textContent='✓ On Target';badge.className='badge b-ok'}
+  else if(pct>=100){badge.textContent='✓ On Target';badge.className='badge b-ok';
+    if(window._kpiDay!==today()){window._kpiDay=today();confetti()}}
   else if(pct>=70){badge.textContent='ใกล้แล้ว';badge.className='badge b-warn'}
   else{badge.textContent='ยังห่างเป้า';badge.className='badge b-bad'}
   document.getElementById('dGross').textContent=thb(gross);
@@ -1049,7 +1082,7 @@ function render(){
   document.getElementById('dMatL').textContent=useReal?'ต้นทุนของที่ใช้ (จริง)':'ต้นทุนของ (ประมาณ '+num(st.cogsPct)+'%)';
   document.getElementById('dProfit').textContent=thb(gp);
   const pl=dayPL(today());
-  document.getElementById('dFixDay').textContent=thb(pl.fixDay);
+  document.getElementById('dCalc').innerHTML=`= ขายสุทธิ ${thb(pl.net)} − ต้นทุนของ ${thb(pl.mat)}${pl.useReal?'':' (ประมาณ)'} − ค่าแรง/อื่นๆ ${thb(pl.lo)} − Fix/วัน ${thb(pl.fixDay)} · หมวด 🛠️ ลงทุน ไม่ถูกหักตรงนี้`;
   const dnt=document.getElementById('dNetToday');
   dnt.style.color=pl.profit>=0?'var(--green)':'var(--red)';
   dnt.textContent='฿'+(pl.profit>=0?'+':'−')+Math.abs(Math.round(pl.profit)).toLocaleString('th-TH');
@@ -1178,7 +1211,8 @@ function render(){
     const pls=dlist.map(d=>dayPL(d));
     const win=pls.filter(p=>p.profit>=0).length;
     const avgP=pls.reduce((a,p)=>a+p.profit,0)/pls.length;
-    document.getElementById('repDailySum').innerHTML=`กำไร <b style="color:var(--green)">${win}</b> / เจ๊ง <b style="color:var(--red)">${pls.length-win}</b> จาก ${pls.length} วัน · เฉลี่ย <b style="color:${avgP>=0?'var(--green)':'var(--red)'}">${avgP>=0?'+':'−'}${thb(Math.abs(avgP)).slice(1)}</b>/วัน`;
+    const sumP=pls.reduce((a,p)=>a+p.profit,0);
+    document.getElementById('repDailySum').innerHTML=`กำไร <b style="color:var(--green)">${win}</b> / เจ๊ง <b style="color:var(--red)">${pls.length-win}</b> จาก ${pls.length} วัน · เฉลี่ย <b style="color:${avgP>=0?'var(--green)':'var(--red)'}">${avgP>=0?'+':'−'}${thb(Math.abs(avgP)).slice(1)}</b>/วัน · รวม <b style="color:${sumP>=0?'var(--green)':'var(--red)'}">${sumP>=0?'+':'−'}${thb(Math.abs(sumP)).slice(1)}</b>`;
   }else document.getElementById('repDailySum').textContent='';
   const rMatV=rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
   const rNetV=rm.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
@@ -1194,7 +1228,72 @@ function render(){
   const catN=id=>id==='gp'?'🛵 GP เดลิเวอรี่':((CATS.find(c=>c.id===id)||{}).ic||'')+' '+((CATS.find(c=>c.id===id)||{n:id}).n);
   document.getElementById('repCats').innerHTML=rek.length?rek.map(k=>hbarRow(catN(k),re[k],re[rek[0]],'var(--red)')).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
 
+  if(document.getElementById('pg-report').classList.contains('show'))renderCharts(m,rm,rs);
+
   fillSettings();
+}
+
+
+/* ---------------- CHARTS ---------------- */
+let CH={};
+function mkChart(id,type,data,opts){
+  const el=document.getElementById(id);
+  if(!el||!window.Chart)return;
+  if(CH[id]){CH[id].data=data;CH[id].options=opts;CH[id].update('none');return}
+  CH[id]=new Chart(el,{type,data,options:opts});
+}
+const PAL=['#E8930C','#2E7D32','#1565C0','#C62828','#6B3F19','#8E24AA','#00897B','#F4511E'];
+function renderCharts(m,rm,rs){
+  if(!window.Chart)return;
+  Chart.defaults.font.family='Sarabun';
+  Chart.defaults.color='#8A7B6C';
+  /* 1) รายวัน: ขายสุทธิ vs ต้นทุนรวม + เส้นคุ้มทุน */
+  const dayset={};rm.forEach(t=>dayset[t.date]=1);
+  rs.filter(x=>x.type==='out'||x.type==='waste').forEach(x=>dayset[x.date]=1);
+  const days=Object.keys(dayset).sort();
+  const be=breakEven();
+  const rev=[],cost=[];
+  days.forEach(d=>{const p=dayPL(d);rev.push(Math.round(p.net));cost.push(Math.round(p.mat+p.lo+p.fixDay))});
+  mkChart('chDaily','bar',{
+    labels:days.map(d=>new Date(d+'T00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short'})),
+    datasets:[
+      {label:'ขายสุทธิ',data:rev,backgroundColor:'#E8930C',borderRadius:6},
+      {label:'ทุน+จ่าย+Fix',data:cost,backgroundColor:'#D9CBB8',borderRadius:6},
+      ...(be>0?[{type:'line',label:'จุดคุ้มทุน',data:days.map(()=>Math.round(be)),borderColor:'#C62828',borderDash:[6,4],borderWidth:2,pointRadius:0}]:[])
+    ]},
+    {responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{boxWidth:12,font:{size:11}}}},
+     scales:{y:{beginAtZero:true,grid:{color:'#EFE6D8'}},x:{grid:{display:false}}}});
+  /* 2) โดนัทช่องทาง */
+  const rc={};rm.filter(t=>t.type==='in').forEach(t=>rc[t.ch]=(rc[t.ch]||0)+t.amt);
+  const ck=Object.keys(rc).sort((a,b)=>rc[b]-rc[a]);
+  mkChart('chChannel','doughnut',{
+    labels:ck.map(k=>chOf(k).n),
+    datasets:[{data:ck.map(k=>Math.round(rc[k])),backgroundColor:PAL,borderWidth:2,borderColor:'#fff'}]},
+    {responsive:true,maintainAspectRatio:false,cutout:'62%',
+     plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}});
+  /* 3) โดนัทรายจ่าย (รวม GP) */
+  const re={};rm.filter(t=>t.type==='ex').forEach(t=>re[t.cat]=(re[t.cat]||0)+t.amt);
+  const gpm=rm.filter(t=>t.type==='in').reduce((a,t)=>a+(t.amt-netAmt(t)),0);
+  if(gpm>0)re['gp']=gpm;
+  const ek=Object.keys(re).sort((a,b)=>re[b]-re[a]);
+  const eName=id=>id==='gp'?'GP เดลิเวอรี่':((CATS.find(c=>c.id===id)||{n:id}).n);
+  mkChart('chExp','doughnut',{
+    labels:ek.map(eName),
+    datasets:[{data:ek.map(k=>Math.round(re[k])),backgroundColor:['#C62828','#E8930C','#6B3F19','#1565C0','#8E24AA','#00897B'],borderWidth:2,borderColor:'#fff'}]},
+    {responsive:true,maintainAspectRatio:false,cutout:'62%',
+     plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:12}}}}});
+}
+/* ---------------- CONFETTI ---------------- */
+function confetti(){
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const ems=['🎉','✨','🐷','💰','🧡','🥓'];
+  for(let i=0;i<16;i++){
+    const s=document.createElement('span');s.textContent=ems[i%ems.length];
+    s.style.cssText=`position:fixed;left:${5+Math.random()*90}vw;top:-32px;font-size:${15+Math.random()*16}px;z-index:99;pointer-events:none;transition:transform ${1.3+Math.random()*.6}s cubic-bezier(.2,.6,.4,1),opacity 1.7s`;
+    document.body.appendChild(s);
+    requestAnimationFrame(()=>{s.style.transform=`translateY(${55+Math.random()*35}vh) rotate(${(Math.random()-.5)*540}deg)`;s.style.opacity='0'});
+    setTimeout(()=>s.remove(),2000);
+  }
 }
 
 setEntryType('in');
