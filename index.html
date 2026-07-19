@@ -111,6 +111,9 @@ nav button.act{color:var(--brown)}
 .count-row{display:grid;grid-template-columns:1fr 58px 78px 76px;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .count-row input{padding:8px 4px;text-align:center;font-family:'Prompt'}
 .count-row .dif{font-family:'Prompt';font-size:12.5px;font-weight:600;text-align:right}
+.day-row{display:grid;grid-template-columns:82px 1fr 1fr 1fr;gap:6px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}
+.day-row:last-child{border-bottom:none}
+.day-row .num{font-size:13.5px;font-weight:600;text-align:right}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -139,6 +142,10 @@ nav button.act{color:var(--brown)}
       <div class="stat"><div class="v" id="dGross">฿0</div><div class="l">ยอดขายรวม</div></div>
       <div class="stat"><div class="v" id="dMat">฿0</div><div class="l" id="dMatL">ต้นทุนของที่ใช้</div></div>
       <div class="stat"><div class="v" id="dProfit">฿0</div><div class="l">กำไรขั้นต้น</div></div>
+    </div>
+    <div class="stat mt" style="display:flex;justify-content:space-between;align-items:center">
+      <span class="l">กำไรสุทธิวันนี้ (หัก ค่าแรง/อื่นๆ + Fix Cost <b id="dFixDay">฿0</b>/วัน แล้ว)</span>
+      <span class="v" id="dNetToday" style="font-size:20px">฿0</span>
     </div>
     <div class="mini mt" id="dNote"></div>
   </div>
@@ -172,8 +179,12 @@ nav button.act{color:var(--brown)}
       <button id="segEx" onclick="setEntryType('ex')">－ รายจ่าย</button>
     </div>
 
-    <label>จำนวนเงิน (บาท)</label>
-    <input type="number" id="eAmt" inputmode="decimal" placeholder="0" style="font-family:'Prompt';font-size:26px;font-weight:600;text-align:center">
+    <div class="grid2">
+      <div><label>จำนวนเงิน (บาท)</label>
+      <input type="number" id="eAmt" inputmode="decimal" placeholder="0" style="font-family:'Prompt';font-size:26px;font-weight:600;text-align:center"></div>
+      <div><label>วันที่ (ย้อนหลังได้)</label>
+      <input type="date" id="eDate" onchange="render()" style="padding:14px 8px"></div>
+    </div>
 
     <div id="incomeBox">
       <label>ช่องทาง</label>
@@ -207,7 +218,7 @@ nav button.act{color:var(--brown)}
   </div>
 
   <div class="card">
-    <h2>รายการวันนี้ <span class="sub" id="todayCount"></span></h2>
+    <h2><span id="todayHdr">รายการวันนี้</span> <span class="sub" id="todayCount"></span></h2>
     <div id="todayList"><div class="empty">ยังไม่มีรายการ</div></div>
   </div>
 </section>
@@ -247,6 +258,12 @@ nav button.act{color:var(--brown)}
       <div class="stat"><div class="v" id="rWaste" style="color:var(--red)">฿0</div><div class="l">มูลค่าของเสีย/ทิ้ง</div></div>
     </div>
     <div class="mini mt">กำไรสุทธิ = รายรับ − GP − รายจ่ายที่บันทึกทั้งหมด · "ต้นทุนของที่ใช้จริง" มาจากการตัดสต๊อก ใช้เช็คว่า % วัตถุดิบจริงตรงกับที่ตั้งไว้ไหม</div>
+  </div>
+  <div class="card">
+    <h2>รายวัน — วันไหนกำไร วันไหนเจ๊ง</h2>
+    <div class="day-row" style="border-bottom:2px solid var(--ink);font-size:11.5px;font-weight:700;color:var(--muted)"><span>วันที่</span><span class="right">ขายสุทธิ</span><span class="right">ทุน+จ่าย+Fix</span><span class="right">กำไร</span></div>
+    <div id="repDaily"><div class="empty">ไม่มีข้อมูล</div></div>
+    <div class="mini mt">กำไร/วัน = ขายสุทธิหลัง GP − ต้นทุนของที่ใช้ (ตัวจริงจากสต๊อก ถ้าวันนั้นไม่ได้ตัดใช้ % ประมาณ มีเครื่องหมาย ~) − ค่าแรง/อื่นๆ วันนั้น − Fix Cost เฉลี่ย/วัน · <b>ค่าซื้อของเข้าสต๊อกไม่หักตรงนี้</b> เพราะหักตอน "ใช้" แล้ว หักซ้ำ = นับสองรอบ · จ่าย Fix Cost จริงก็ไม่หักซ้ำ เพราะกระจายเป็นรายวันให้แล้ว</div>
   </div>
   <div class="card"><h2>รายรับตามช่องทาง</h2><div id="repChannels"><div class="empty">ไม่มีข้อมูล</div></div></div>
   <div class="card"><h2>รายจ่ายตามประเภท</h2><div id="repCats"><div class="empty">ไม่มีข้อมูล</div></div></div>
@@ -350,7 +367,10 @@ nav button.act{color:var(--brown)}
 <div class="modal-bg" id="useModal"><div class="modal">
   <h3 id="umTitle">เบิกใช้</h3>
   <input type="hidden" id="umId">
-  <label>จำนวน</label><input type="number" id="umQty" inputmode="decimal" style="font-family:'Prompt';font-size:24px;text-align:center">
+  <div class="grid2">
+    <div><label>จำนวน</label><input type="number" id="umQty" inputmode="decimal" style="font-family:'Prompt';font-size:24px;text-align:center"></div>
+    <div><label>วันที่</label><input type="date" id="umDate" style="padding:13px 8px"></div>
+  </div>
   <div class="grid2 mt">
     <button class="btn" onclick="saveUse('out')">✅ เบิกใช้</button>
     <button class="btn danger" onclick="saveUse('waste')">🗑 ของเสีย/ทิ้ง</button>
@@ -362,7 +382,9 @@ nav button.act{color:var(--brown)}
 <!-- stock count modal -->
 <div class="modal-bg" id="countModal"><div class="modal">
   <h3>📋 นับสต๊อกท้ายวัน</h3>
-  <div class="mini">นับของจริงแล้วกรอกช่อง "นับได้" — คอลัมน์ขวาสุดโชว์ทันทีว่าระบบจะตัดเท่าไหร่ ช่องไหนไม่นับ เว้นว่าง</div>
+  <label>นับของวันไหน (ลืมนับเมื่อวาน เลือกย้อนได้)</label>
+  <input type="date" id="cntDate">
+  <div class="mini mt">นับของจริงแล้วกรอกช่อง "นับได้" — คอลัมน์ขวาสุดโชว์ทันทีว่าระบบจะตัดเท่าไหร่ ช่องไหนไม่นับ เว้นว่าง · ถ้าเลือกวันย้อนหลัง ระบบตัดจากยอดคงเหลือปัจจุบัน (ใช้ได้เมื่อยังไม่มีการซื้อ/ตัดหลังจากวันนั้น)</div>
   <div class="count-row" style="border-bottom:2px solid var(--ink);font-size:12px;font-weight:700;color:var(--muted)"><span>รายการ</span><span class="right">ระบบ</span><span class="right">นับได้</span><span class="right">จะตัด</span></div>
   <div id="countList"></div>
   <div class="grid2 mt">
@@ -491,6 +513,18 @@ function netAmt(t){return t.amt*(1-(chOf(t.ch).gp||0)/100)}
 function txToday(){return S.tx.filter(t=>t.date===today())}
 function txMonth(m){return S.tx.filter(t=>t.date&&t.date.startsWith(m))}
 function stxMonth(m){return S.stx.filter(x=>x.date&&x.date.startsWith(m))}
+/* กำไร/ขาดทุนสุทธิของวันหนึ่งๆ (accrual: ต้นทุนของรับรู้ตอนใช้ ไม่ใช่ตอนซื้อ) */
+function dayPL(d){
+  const dt=S.tx.filter(t=>t.date===d);
+  const gross=dt.filter(t=>t.type==='in').reduce((a,t)=>a+t.amt,0);
+  const net=dt.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
+  const matReal=S.stx.filter(x=>x.date===d&&(x.type==='out'||x.type==='waste')).reduce((a,x)=>a+num(x.cost),0);
+  const useReal=matReal>0;
+  const mat=useReal?matReal:net*num(S.settings.cogsPct)/100;
+  const lo=dt.filter(t=>t.type==='ex'&&(t.cat==='labor'||t.cat==='other')).reduce((a,t)=>a+t.amt,0);
+  const fixDay=totalFix()/Math.max(1,num(S.settings.openDays));
+  return{gross,net,mat,useReal,lo,fixDay,profit:net-mat-lo-fixDay};
+}
 
 function usageStats(itemId){
   const cut=new Date();cut.setDate(cut.getDate()-30);
@@ -563,8 +597,9 @@ function updAvgPreview(){
 async function saveEntry(){
   const amt=num(document.getElementById('eAmt').value);
   if(amt<=0)return alert('ใส่จำนวนเงินก่อน');
+  const eDate=document.getElementById('eDate').value||today();
   const note=document.getElementById('eNote').value.trim();
-  const t={id:uid(),date:today(),ts:Date.now(),type:entryType,amt,note};
+  const t={id:uid(),date:eDate,ts:Date.now(),type:entryType,amt,note};
   if(entryType==='in'){t.ch=selCh}
   else{
     t.cat=selCat;
@@ -581,7 +616,7 @@ async function saveEntry(){
         const newAvg=(num(it.qty)*num(it.avg)+amt)/(num(it.qty)+qty);
         it.qty=num(it.qty)+qty;it.avg=+newAvg.toFixed(4);it.last=+(amt/qty).toFixed(2);
         await dbUpd('items',it);
-        await dbAdd('stx',{id:uid(),itemId,date:today(),ts:Date.now(),type:'in',qty,cost:amt,note:'ซื้อเข้า '+(amt/qty).toFixed(2)+'/หน่วย'});
+        await dbAdd('stx',{id:uid(),itemId,date:eDate,ts:Date.now(),type:'in',qty,cost:amt,note:'ซื้อเข้า '+(amt/qty).toFixed(2)+'/หน่วย'});
       }else if(S.items.length&&!confirm('ยังไม่ได้เลือกของ/จำนวน — บันทึกเป็นรายจ่ายเฉยๆ โดยไม่รับเข้าสต๊อก?'))return;
     }
   }
@@ -653,6 +688,7 @@ function openUse(id){
   document.getElementById('umTitle').textContent=it.n+' (เหลือ '+it.qty+' '+it.unit+')';
   document.getElementById('umId').value=id;
   document.getElementById('umQty').value='';
+  document.getElementById('umDate').value=today();
   const hist=S.stx.filter(x=>x.itemId===id).sort((a,b)=>b.ts-a.ts).slice(0,8);
   const LAB={in:'รับเข้า',out:'เบิกใช้',waste:'ของเสีย',adj:'ปรับยอด'};
   document.getElementById('umHist').innerHTML=hist.length?hist.map(x=>
@@ -663,15 +699,17 @@ function openUse(id){
 async function saveUse(type){
   const id=document.getElementById('umId').value,qty=num(document.getElementById('umQty').value);
   if(qty<=0)return alert('ใส่จำนวน');
+  const d=document.getElementById('umDate').value||today();
   const it=S.items.find(i=>i.id===id);
   it.qty=Math.max(0,num(it.qty)-qty);
   await dbUpd('items',it);
-  await dbAdd('stx',{id:uid(),itemId:id,date:today(),ts:Date.now(),type,qty,cost:+(qty*num(it.avg)).toFixed(2)});
+  await dbAdd('stx',{id:uid(),itemId:id,date:d,ts:Date.now(),type,qty,cost:+(qty*num(it.avg)).toFixed(2)});
   closeModal('useModal');render();
 }
 /* นับสต๊อกท้ายวัน */
 function openCountModal(){
   if(!S.items.length)return alert('ยังไม่มีรายการสต๊อก');
+  document.getElementById('cntDate').value=today();
   document.getElementById('countList').innerHTML=S.items.map(it=>
     `<div class="count-row"><span style="font-size:13px">${icatOf(it.cat).ic} ${esc(it.n)}</span>
      <span class="right num" style="font-size:13px">${it.qty}</span>
@@ -691,6 +729,7 @@ function updCountDiff(id){
 }
 async function saveCount(){
   const results=[];
+  const cd=document.getElementById('cntDate').value||today();
   for(const it of S.items){
     const v=document.getElementById('cnt_'+it.id).value;
     if(v==='')continue;
@@ -698,10 +737,10 @@ async function saveCount(){
     if(diff===0){results.push({it,diff:0});continue}
     if(diff<0){
       const cost=+(-diff*num(it.avg)).toFixed(2);
-      await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'out',qty:-diff,cost,note:'นับท้ายวัน'});
+      await dbAdd('stx',{id:uid(),itemId:it.id,date:cd,ts:Date.now(),type:'out',qty:-diff,cost,note:'นับท้ายวัน'});
       results.push({it,diff,cost});
     }else{
-      await dbAdd('stx',{id:uid(),itemId:it.id,date:today(),ts:Date.now(),type:'adj',qty:diff,note:'นับท้ายวัน (เจอเกิน)'});
+      await dbAdd('stx',{id:uid(),itemId:it.id,date:cd,ts:Date.now(),type:'adj',qty:diff,note:'นับท้ายวัน (เจอเกิน)'});
       results.push({it,diff,cost:0});
     }
     it.qty=counted;await dbUpd('items',it);
@@ -845,9 +884,14 @@ function render(){
   document.getElementById('dMat').textContent=thb(matCost);
   document.getElementById('dMatL').textContent=useReal?'ต้นทุนของที่ใช้ (จริง)':'ต้นทุนของ (ประมาณ '+num(st.cogsPct)+'%)';
   document.getElementById('dProfit').textContent=thb(gp);
+  const pl=dayPL(today());
+  document.getElementById('dFixDay').textContent=thb(pl.fixDay);
+  const dnt=document.getElementById('dNetToday');
+  dnt.style.color=pl.profit>=0?'var(--green)':'var(--red)';
+  dnt.textContent='฿'+(pl.profit>=0?'+':'−')+Math.abs(Math.round(pl.profit)).toLocaleString('th-TH');
   document.getElementById('dNote').innerHTML=(useReal
-    ?'ต้นทุนคิดจากการตัดสต๊อกจริง (เบิกใช้/นับท้ายวัน × ต้นทุนเฉลี่ย)'+(wasteToday>0?' · ของเสียวันนี้ '+thb(wasteToday):'')
-    :'ยังไม่มีการตัดสต๊อกวันนี้ — ต้นทุนใช้ % ประมาณการไปก่อน')+' · กำไรนี้ยังไม่หัก Fix Cost รายวัน ('+thb(totalFix()/Math.max(1,st.openDays))+')';
+    ?'ต้นทุนคิดจากการตัดสต๊อกจริง'+(wasteToday>0?' · ของเสียวันนี้ '+thb(wasteToday):'')
+    :'ยังไม่มีการตัดสต๊อกวันนี้ — ต้นทุนใช้ % ประมาณการไปก่อน')+' · ค่าซื้อของเข้าสต๊อกไม่ถูกหักในกำไร (หักตอนใช้แทน กันนับซ้ำ)';
 
   const chSum={};tt.filter(t=>t.type==='in').forEach(t=>chSum[t.ch]=(chSum[t.ch]||0)+t.amt);
   const chKeys=Object.keys(chSum);
@@ -877,7 +921,11 @@ function render(){
 
   /* entry */
   renderChips();
-  const tl=tt.slice().sort((a,b)=>b.ts-a.ts);
+  const eDateEl=document.getElementById('eDate');
+  if(!eDateEl.value)eDateEl.value=today();
+  const eDate=eDateEl.value;
+  document.getElementById('todayHdr').textContent=eDate===today()?'รายการวันนี้':'รายการวันที่ '+new Date(eDate+'T00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'2-digit'});
+  const tl=S.tx.filter(t=>t.date===eDate).sort((a,b)=>b.ts-a.ts);
   document.getElementById('todayCount').textContent=tl.length?tl.length+' รายการ':'';
   document.getElementById('todayList').innerHTML=tl.length?tl.map(t=>{
     const isIn=t.type==='in';
@@ -925,6 +973,21 @@ function render(){
   document.getElementById('rNet').textContent=thb(rIn-rGP-rEx);
   document.getElementById('rMat').textContent=thb(rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
   document.getElementById('rWaste').textContent=thb(rs.filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
+  /* ตารางรายวัน */
+  const dayset={};
+  rm.forEach(t=>dayset[t.date]=1);
+  rs.filter(x=>x.type==='out'||x.type==='waste').forEach(x=>dayset[x.date]=1);
+  const dlist=Object.keys(dayset).sort().reverse();
+  document.getElementById('repDaily').innerHTML=dlist.length?dlist.map(d=>{
+    const p=dayPL(d);
+    const dd=new Date(d+'T00:00');
+    const lab=dd.toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
+    const cost=p.mat+p.lo+p.fixDay;
+    return `<div class="day-row"><span>${lab}${d===today()?' <b style="color:var(--gold)">วันนี้</b>':''}</span>
+      <span class="num">${thb(p.net)}</span>
+      <span class="num sub">${p.useReal?'':'~'}${thb(cost)}</span>
+      <span class="num" style="color:${p.profit>=0?'var(--green)':'var(--red)'}">${p.profit>=0?'+':'−'}${thb(Math.abs(p.profit)).slice(1)}</span></div>`;
+  }).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
   const rc={};rm.filter(t=>t.type==='in').forEach(t=>rc[t.ch]=(rc[t.ch]||0)+t.amt);
   const rck=Object.keys(rc).sort((a,b)=>rc[b]-rc[a]);
   document.getElementById('repChannels').innerHTML=rck.length?rck.map(k=>hbarRow((chOf(k).ic||'')+' '+esc(chOf(k).n),rc[k],rc[rck[0]],'var(--gold)')).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
