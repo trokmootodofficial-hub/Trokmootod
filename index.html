@@ -115,6 +115,18 @@ nav button.act{color:var(--brown)}
 .day-row:last-child{border-bottom:none}
 .day-row .num{font-size:13.5px;font-weight:600;text-align:right}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+/* ===== Desktop layout ===== */
+@media(min-width:980px){
+  .wrap{max-width:1100px}
+  nav .wrap,header .wrap{max-width:1100px}
+  .tabpage.show{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;align-items:start}
+  .tabpage.show>.card{margin:14px 0 2px}
+  #pg-stock.show{grid-template-columns:1fr}
+  .modal-bg.show{align-items:center}
+  .modal{border-radius:20px;max-width:640px}
+  body{padding-bottom:86px}
+}
+@media(min-width:1280px){.wrap,nav .wrap,header .wrap{max-width:1200px}}
 </style>
 </head>
 <body>
@@ -148,6 +160,12 @@ nav button.act{color:var(--brown)}
       <span class="v" id="dNetToday" style="font-size:20px">฿0</span>
     </div>
     <div class="mini mt" id="dNote"></div>
+    <div id="dWarn"></div>
+  </div>
+
+  <div class="card">
+    <h2>💵 เงินสดในลิ้นชัก <button class="btn sm" onclick="openCashModal()">ปิดยอดวันนี้</button></h2>
+    <div id="cashStatus"><div class="empty">ยังไม่ได้ปิดยอดวันนี้</div></div>
   </div>
 
   <div class="card">
@@ -194,6 +212,10 @@ nav button.act{color:var(--brown)}
     <div id="expenseBox" style="display:none">
       <label>ประเภทรายจ่าย</label>
       <div class="chips" id="catChips"></div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:12px;font-size:14px;color:var(--ink)">
+        <input type="checkbox" id="eDrawer" style="width:20px;height:20px;accent-color:var(--gold)">
+        💵 จ่ายด้วยเงินสดจากลิ้นชัก (ระบบจะหักให้เองตอนปิดยอดเงินสด)
+      </label>
 
       <div id="matBox" style="display:none">
         <label>ของที่ซื้อ (รับเข้าสต๊อก + คิดต้นทุนเฉลี่ยให้)</label>
@@ -257,10 +279,12 @@ nav button.act{color:var(--brown)}
       <div class="stat"><div class="v" id="rMat">฿0</div><div class="l">ต้นทุนของที่ใช้จริง (จากสต๊อก)</div></div>
       <div class="stat"><div class="v" id="rWaste" style="color:var(--red)">฿0</div><div class="l">มูลค่าของเสีย/ทิ้ง</div></div>
     </div>
-    <div class="mini mt">กำไรสุทธิ = รายรับ − GP − รายจ่ายที่บันทึกทั้งหมด · "ต้นทุนของที่ใช้จริง" มาจากการตัดสต๊อก ใช้เช็คว่า % วัตถุดิบจริงตรงกับที่ตั้งไว้ไหม</div>
+    <div class="mini mt" id="rCogsLine"></div>
+    <div class="mini mt">กำไรสุทธิ = รายรับ − GP − รายจ่ายที่บันทึกทั้งหมด</div>
   </div>
   <div class="card">
     <h2>รายวัน — วันไหนกำไร วันไหนเจ๊ง</h2>
+    <div class="mini" id="repDailySum" style="margin-bottom:6px"></div>
     <div class="day-row" style="border-bottom:2px solid var(--ink);font-size:11.5px;font-weight:700;color:var(--muted)"><span>วันที่</span><span class="right">ขายสุทธิ</span><span class="right">ทุน+จ่าย+Fix</span><span class="right">กำไร</span></div>
     <div id="repDaily"><div class="empty">ไม่มีข้อมูล</div></div>
     <div class="mini mt">กำไร/วัน = ขายสุทธิหลัง GP − ต้นทุนของที่ใช้ (ตัวจริงจากสต๊อก ถ้าวันนั้นไม่ได้ตัดใช้ % ประมาณ มีเครื่องหมาย ~) − ค่าแรง/อื่นๆ วันนั้น − Fix Cost เฉลี่ย/วัน · <b>ค่าซื้อของเข้าสต๊อกไม่หักตรงนี้</b> เพราะหักตอน "ใช้" แล้ว หักซ้ำ = นับสองรอบ · จ่าย Fix Cost จริงก็ไม่หักซ้ำ เพราะกระจายเป็นรายวันให้แล้ว</div>
@@ -393,6 +417,24 @@ nav button.act{color:var(--brown)}
   </div>
 </div></div>
 
+<!-- cash close modal -->
+<div class="modal-bg" id="cashModal"><div class="modal">
+  <h3>💵 ปิดยอดเงินสดท้ายวัน</h3>
+  <div class="mini">เช็คว่าเงินจริงในลิ้นชักตรงกับบัญชี — ทำทุกวัน 1 นาที ปิดช่องรั่วที่เจ็บสุดของร้านอาหาร</div>
+  <div class="stat mt" style="display:flex;justify-content:space-between;align-items:center">
+    <span class="l">ขายเงินสดวันนี้ (จากที่บันทึก)</span><span class="v" id="cmSales">฿0</span>
+  </div>
+  <label>เงินทอนตั้งต้นเช้านี้</label><input type="number" id="cmFloat" inputmode="decimal" oninput="updCashPrev()">
+  <label>จ่ายเงินสดออกจากลิ้นชักวันนี้ (ซื้อของหน้าร้าน ฯลฯ)</label><input type="number" id="cmPaid" inputmode="decimal" placeholder="0" oninput="updCashPrev()">
+  <div class="mini" id="cmPaidHint" style="margin-top:4px"></div>
+  <label>นับเงินในลิ้นชักได้จริง</label><input type="number" id="cmCount" inputmode="decimal" style="font-family:'Prompt';font-size:22px;text-align:center" oninput="updCashPrev()">
+  <div class="formula" id="cmPreview">ควรมี = ตั้งต้น + ขายเงินสด − จ่ายออก</div>
+  <div class="grid2 mt">
+    <button class="btn ghost" onclick="closeModal('cashModal')">ยกเลิก</button>
+    <button class="btn" onclick="saveCash()">บันทึก</button>
+  </div>
+</div></div>
+
 <!-- count result modal -->
 <div class="modal-bg" id="countResultModal"><div class="modal">
   <h3>✅ บันทึกผลนับแล้ว — Transaction ที่เกิดขึ้น</h3>
@@ -416,7 +458,7 @@ const DEF_SETTINGS={shopName:'ร้านหมูทอด',openDays:30,cogsPc
             {id:'grab',n:'Grab',gp:30,ic:'🛵'},{id:'lineman',n:'LINE MAN',gp:30,ic:'🛵'},
             {id:'shopee',n:'ShopeeFood',gp:30,ic:'🛵'}]};
 
-let S={settings:structuredClone(DEF_SETTINGS),tx:[],items:[],stx:[]};
+let S={settings:structuredClone(DEF_SETTINGS),tx:[],items:[],stx:[],cash:[]};
 let db=null,fsMode=false;
 let entryType='in',selCh='cash',selCat='mat',selICat='fresh',stockFilter='all';
 
@@ -473,9 +515,9 @@ async function initDB(){
         // ครั้งแรก: ถ้ามีข้อมูล local เดิม ย้ายขึ้น cloud ให้
         loadLS();
         await db.collection('meta').doc('settings').set(S.settings);
-        for(const col of['tx','items','stx'])for(const o of S[col])await db.collection(col).doc(o.id).set(o);
+        for(const col of['tx','items','stx','cash'])for(const o of S[col]||[])await db.collection(col).doc(o.id).set(o);
       }
-      for(const col of['tx','items','stx'])
+      for(const col of['tx','items','stx','cash'])
         db.collection(col).onSnapshot(snap=>{S[col]=snap.docs.map(d=>d.data());render()});
       db.collection('meta').doc('settings').onSnapshot(d=>{if(d.exists){S.settings={...structuredClone(DEF_SETTINGS),...d.data()};render()}});
     }catch(e){
@@ -490,7 +532,7 @@ async function initDB(){
 }
 function loadLS(){
   try{const d=JSON.parse(localStorage.getItem(LS_KEY));
-    if(d){S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings}}}catch(e){}
+    if(d){S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings};S.cash=S.cash||[]}}catch(e){}
   // migrate v1
   try{const v1=JSON.parse(localStorage.getItem('mootod_v1'));
     if(v1&&!localStorage.getItem(LS_KEY)){
@@ -603,6 +645,7 @@ async function saveEntry(){
   if(entryType==='in'){t.ch=selCh}
   else{
     t.cat=selCat;
+    if(document.getElementById('eDrawer').checked)t.drawer=true;
     if(selCat==='fix'){
       const fid=document.getElementById('eFixItem').value;
       if(fid){t.fixId=fid;const f=S.settings.fixedItems.find(x=>x.id===fid);if(f&&!note)t.note=f.n}
@@ -621,7 +664,7 @@ async function saveEntry(){
     }
   }
   await dbAdd('tx',t);
-  document.getElementById('eAmt').value='';document.getElementById('eNote').value='';document.getElementById('eQty').value='';
+  document.getElementById('eAmt').value='';document.getElementById('eNote').value='';document.getElementById('eQty').value='';document.getElementById('eDrawer').checked=false;
   render();document.getElementById('eAmt').focus();
 }
 async function delTx(id){
@@ -759,6 +802,45 @@ async function saveCount(){
 }
 function closeModal(id){document.getElementById(id).classList.remove('show')}
 
+/* ---------------- CASH CLOSE ---------------- */
+function cashSalesToday(){return S.tx.filter(t=>t.date===today()&&t.type==='in'&&t.ch==='cash').reduce((a,t)=>a+t.amt,0)}
+function drawerPaidToday(){return S.tx.filter(t=>t.date===today()&&t.type==='ex'&&t.drawer).reduce((a,t)=>a+t.amt,0)}
+function openCashModal(){
+  const ex=S.cash.find(c=>c.date===today());
+  const last=S.cash.slice().sort((a,b)=>b.ts-a.ts)[0];
+  const dp=drawerPaidToday();
+  document.getElementById('cmSales').textContent=thb(cashSalesToday());
+  document.getElementById('cmFloat').value=ex?ex.float:(last?last.float:'');
+  document.getElementById('cmPaid').value=ex?ex.paidOut:(dp||'');
+  document.getElementById('cmPaidHint').innerHTML=dp>0
+    ?'ดึงมาจากรายจ่ายที่ติ๊ก "จ่ายจากลิ้นชัก" วันนี้ '+thb(dp)+' — แก้ได้ถ้ามีจ่ายที่ไม่ได้บันทึก'
+    :'วันนี้ไม่มีรายจ่ายที่ติ๊ก "จ่ายจากลิ้นชัก" — ถ้าควักลิ้นชักจ่ายอะไรไป กรอกเพิ่มเอง';
+  document.getElementById('cmCount').value=ex?ex.counted:'';
+  updCashPrev();
+  document.getElementById('cashModal').classList.add('show');
+}
+function updCashPrev(){
+  const f=num(document.getElementById('cmFloat').value),p=num(document.getElementById('cmPaid').value);
+  const sales=cashSalesToday(),exp=f+sales-p;
+  const cv=document.getElementById('cmCount').value;
+  let msg=`ควรมีในลิ้นชัก = ${f.toLocaleString()} + ${sales.toLocaleString()} − ${p.toLocaleString()} = <b>${thb(exp)}</b>`;
+  if(cv!==''){
+    const diff=num(cv)-exp;
+    if(Math.abs(diff)<1)msg+='<br><b style="color:var(--green)">✓ ตรงเป๊ะ</b>';
+    else if(diff<0)msg+=`<br><b style="color:var(--red)">ขาดไป ${thb(-diff)}</b> — ทอนผิด? หยิบใช้แล้วลืมบันทึก? ลืมกดขายบางออเดอร์?`;
+    else msg+=`<br><b style="color:var(--blue)">เกินมา ${thb(diff)}</b> — ลืมบันทึกยอดขายบางรายการหรือเปล่า`;
+  }
+  document.getElementById('cmPreview').innerHTML=msg;
+}
+async function saveCash(){
+  const f=num(document.getElementById('cmFloat').value),p=num(document.getElementById('cmPaid').value),c=num(document.getElementById('cmCount').value);
+  if(document.getElementById('cmCount').value==='')return alert('นับเงินแล้วกรอกยอดที่นับได้ก่อน');
+  const sales=cashSalesToday(),expected=f+sales-p,diff=c-expected;
+  const ex=S.cash.find(x=>x.date===today());
+  const rec={id:ex?ex.id:uid(),date:today(),ts:Date.now(),float:f,paidOut:p,cashSales:sales,counted:c,expected,diff};
+  ex?await dbUpd('cash',rec):await dbAdd('cash',rec);
+  closeModal('cashModal');render();
+}
 /* ---------------- SETTINGS ---------------- */
 function fillSettings(){
   const st=S.settings;
@@ -837,7 +919,7 @@ async function doImport(inp){
   S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings};
   if(fsMode){
     await dbSettings();
-    for(const col of['tx','items','stx'])for(const o of S[col])await db.collection(col).doc(o.id).set(o);
+    for(const col of['tx','items','stx','cash'])for(const o of S[col]||[])await db.collection(col).doc(o.id).set(o);
   }else lsSave();
   render();alert('กู้คืนแล้ว ✓');
 }
@@ -893,6 +975,24 @@ function render(){
     ?'ต้นทุนคิดจากการตัดสต๊อกจริง'+(wasteToday>0?' · ของเสียวันนี้ '+thb(wasteToday):'')
     :'ยังไม่มีการตัดสต๊อกวันนี้ — ต้นทุนใช้ % ประมาณการไปก่อน')+' · ค่าซื้อของเข้าสต๊อกไม่ถูกหักในกำไร (หักตอนใช้แทน กันนับซ้ำ)';
 
+  /* เงินสดวันนี้ */
+  const cc=S.cash.find(x=>x.date===today());
+  document.getElementById('cashStatus').innerHTML=cc
+    ?`<div class="grid3">
+        <div class="stat"><div class="v">${thb(cc.expected)}</div><div class="l">ควรมี</div></div>
+        <div class="stat"><div class="v">${thb(cc.counted)}</div><div class="l">นับได้</div></div>
+        <div class="stat"><div class="v" style="color:${Math.abs(cc.diff)<1?'var(--green)':cc.diff<0?'var(--red)':'var(--blue)'}">${Math.abs(cc.diff)<1?'ตรง ✓':(cc.diff<0?'−':'+')+thb(Math.abs(cc.diff)).slice(1)}</div><div class="l">${Math.abs(cc.diff)<1?'เงินสด':cc.diff<0?'ขาด':'เกิน'}</div></div>
+      </div>`
+    :'<div class="empty">ยังไม่ได้ปิดยอดวันนี้ — กด "ปิดยอดวันนี้" ตอนปิดร้าน</div>';
+
+  /* เตือนวันก่อนหน้าไม่ได้ตัดสต๊อก */
+  const yd=new Date();yd.setDate(yd.getDate()-1);
+  const ys=yd.getFullYear()+'-'+String(yd.getMonth()+1).padStart(2,'0')+'-'+String(yd.getDate()).padStart(2,'0');
+  const soldY=S.tx.some(t=>t.date===ys&&t.type==='in');
+  const cutY=S.stx.some(x=>x.date===ys&&(x.type==='out'||x.type==='waste'));
+  document.getElementById('dWarn').innerHTML=(soldY&&!cutY)
+    ?'<div class="alert-item mt">⚠️ เมื่อวานมียอดขายแต่ไม่ได้ตัด/นับสต๊อก — ต้นทุนเมื่อวานเป็นค่าประมาณ ไปที่ สต๊อก > นับท้ายวัน แล้วเลือกวันย้อนหลังได้</div>':'';
+
   const chSum={};tt.filter(t=>t.type==='in').forEach(t=>chSum[t.ch]=(chSum[t.ch]||0)+t.amt);
   const chKeys=Object.keys(chSum);
   document.getElementById('dashChannels').innerHTML=chKeys.length?chKeys.map(k=>{
@@ -930,7 +1030,7 @@ function render(){
   document.getElementById('todayList').innerHTML=tl.length?tl.map(t=>{
     const isIn=t.type==='in';
     const c=isIn?chOf(t.ch):(CATS.find(x=>x.id===t.cat)||{n:t.cat,ic:'📎'});
-    const sub=[isIn&&chOf(t.ch).gp?`สุทธิ ${thb(netAmt(t))}`:'',t.qty?`+${t.qty} เข้าสต๊อก`:'',t.note].filter(Boolean).join(' · ');
+    const sub=[isIn&&chOf(t.ch).gp?`สุทธิ ${thb(netAmt(t))}`:'',t.qty?`+${t.qty} เข้าสต๊อก`:'',t.drawer?'💵 จ่ายจากลิ้นชัก':'',t.note].filter(Boolean).join(' · ');
     return `<div class="row"><div class="dot" style="background:${isIn?'var(--green-soft)':'var(--red-soft)'}">${c.ic||'💰'}</div>
       <div class="mid"><div class="t">${esc(c.n)}</div><div class="s">${esc(sub)||new Date(t.ts).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})}</div></div>
       <div class="amt ${isIn?'in':'ex'}">${isIn?'+':'−'}${thb(t.amt)}</div>
@@ -988,6 +1088,17 @@ function render(){
       <span class="num sub">${p.useReal?'':'~'}${thb(cost)}</span>
       <span class="num" style="color:${p.profit>=0?'var(--green)':'var(--red)'}">${p.profit>=0?'+':'−'}${thb(Math.abs(p.profit)).slice(1)}</span></div>`;
   }).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
+  if(dlist.length){
+    const pls=dlist.map(d=>dayPL(d));
+    const win=pls.filter(p=>p.profit>=0).length;
+    const avgP=pls.reduce((a,p)=>a+p.profit,0)/pls.length;
+    document.getElementById('repDailySum').innerHTML=`กำไร <b style="color:var(--green)">${win}</b> / เจ๊ง <b style="color:var(--red)">${pls.length-win}</b> จาก ${pls.length} วัน · เฉลี่ย <b style="color:${avgP>=0?'var(--green)':'var(--red)'}">${avgP>=0?'+':'−'}${thb(Math.abs(avgP)).slice(1)}</b>/วัน`;
+  }else document.getElementById('repDailySum').textContent='';
+  const rMatV=rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
+  const rNetV=rm.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
+  document.getElementById('rCogsLine').innerHTML=(rMatV>0&&rNetV>0)
+    ?`📊 COGS จริงเดือนนี้ = ${(rMatV/rNetV*100).toFixed(1)}% ของยอดขายสุทธิ (ตั้งไว้ ${num(S.settings.cogsPct)}%) — ${Math.abs(rMatV/rNetV*100-num(S.settings.cogsPct))>5?'<b style="color:var(--red)">ห่างกันเกิน 5% ไปปรับ % ในตั้งค่า หรือหาสาเหตุของแพง/ของหาย</b>':'ใกล้เคียงกัน ใช้ได้'}`
+    :'📊 ยังไม่มีข้อมูลตัดสต๊อกพอจะเทียบ COGS จริงกับ % ที่ตั้งไว้';
   const rc={};rm.filter(t=>t.type==='in').forEach(t=>rc[t.ch]=(rc[t.ch]||0)+t.amt);
   const rck=Object.keys(rc).sort((a,b)=>rc[b]-rc[a]);
   document.getElementById('repChannels').innerHTML=rck.length?rck.map(k=>hbarRow((chOf(k).ic||'')+' '+esc(chOf(k).n),rc[k],rc[rck[0]],'var(--gold)')).join(''):'<div class="empty">ไม่มีข้อมูล</div>';
