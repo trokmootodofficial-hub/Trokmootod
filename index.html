@@ -334,6 +334,11 @@ nav button.act .ic{animation:pop .3s ease}
   <div class="card"><h2>รายรับตามช่องทาง</h2><div id="repChannels"><div class="empty">ไม่มีข้อมูล</div></div></div>
   <div class="card"><h2>รายจ่ายตามประเภท</h2><div id="repCats"><div class="empty">ไม่มีข้อมูล</div></div></div>
   <div class="card">
+    <h2>🚨 วันที่ควรเช็ค <span class="sub">ใช้ของผิดปกติจากพฤติกรรมปกติของร้าน</span></h2>
+    <div id="repAnomalies"><div class="empty">กำลังตรวจ...</div></div>
+    <div class="mini mt">เทียบการใช้แต่ละวันกับค่าเฉลี่ย+ส่วนเบี่ยงเบนของวัตถุดิบตัวนั้นเอง (ข้อมูลย้อนหลัง 30 วัน) แสดงเฉพาะวันที่ใช้เกินปกติชัดเจน<b>และ</b>มีมูลค่ากระทบจริง (≥50 บาท) กันเตือนพร่ำเพรื่อจากรายการเล็กๆ น้อยๆ</div>
+  </div>
+  <div class="card">
     <h2>📦 ใช้วัตถุดิบเดือนนี้ <span class="sub">เรียงจากใช้เยอะสุด</span></h2>
     <div id="repMatUsage"><div class="empty">ยังไม่มีการตัดสต๊อกเดือนนี้</div></div>
   </div>
@@ -1169,11 +1174,17 @@ async function delChannel(i){
 }
 
 /* ---------------- EXPORT ---------------- */
+/* แปลง YYYY-MM-DD (เก็บภายใน) -> DD/MM/YYYY (อ่านง่าย, ใช้ตอน export CSV เท่านั้น ไม่กระทบข้อมูลจริง) */
+function toDMY(iso){
+  if(!iso)return'';
+  const[y,mo,d]=iso.split('-');
+  return d+'/'+mo+'/'+y;
+}
 function exportCSV(){
   const m=document.getElementById('repMonth').value;
   const rows=[['date','type','channel/category','amount','net_after_gp','note']];
   txMonth(m).sort((a,b)=>a.ts-b.ts).forEach(t=>{
-    rows.push([t.date,t.type==='in'?'income':'expense',
+    rows.push([toDMY(t.date),t.type==='in'?'income':'expense',
       t.type==='in'?chOf(t.ch).n:(CATS.find(c=>c.id===t.cat)||{}).n||t.cat,
       t.amt,t.type==='in'?netAmt(t).toFixed(2):'',(t.note||'').replace(/,/g,' ')]);
   });
@@ -1185,7 +1196,7 @@ function exportStockCSV(){
   const LAB={in:'รับเข้า',out:'เบิกใช้',waste:'ของเสีย',adj:'ปรับยอด'};
   stxMonth(m).sort((a,b)=>a.ts-b.ts).forEach(x=>{
     const it=S.items.find(i=>i.id===x.itemId);
-    rows.push([x.date,it?it.n:x.itemId,it?icatOf(it.cat).n:'',LAB[x.type]||x.type,x.qty,it?it.unit:'',x.cost||'',(x.note||'').replace(/,/g,' ')]);
+    rows.push([toDMY(x.date),it?it.n:x.itemId,it?icatOf(it.cat).n:'',LAB[x.type]||x.type,x.qty,it?it.unit:'',x.cost||'',(x.note||'').replace(/,/g,' ')]);
   });
   dl(new Blob(['\ufeff'+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),`mootod_stock_${m}.csv`);
 }
@@ -1382,36 +1393,58 @@ function render(){
   document.getElementById('rWaste').textContent=thb(rs.filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
   const rMatV=rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
   const rNetV=rm.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
-  /* สรุปใช้วัตถุดิบเดือนนี้ เรียงจากใช้เยอะสุด + เทียบ % ต่อยอดขายกับเดือนก่อน (จับของหาย/ใช้เปลือง) */
+  /* สรุปใช้วัตถุดิบเดือนนี้ — เรียบง่าย ไม่มี % เทียบเดือนก่อนที่แกว่งง่ายเวลาข้อมูลน้อย */
   const usage={};
   rs.filter(x=>x.type==='out'||x.type==='waste').forEach(x=>{
     if(!usage[x.itemId])usage[x.itemId]={qty:0,cost:0,waste:0};
     usage[x.itemId].qty+=num(x.qty);usage[x.itemId].cost+=num(x.cost);
     if(x.type==='waste')usage[x.itemId].waste+=num(x.cost);
   });
-  const [py,pmn]=m.split('-').map(Number);
-  const pd=new Date(py,pmn-2,1),prevM=pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0');
-  const prevNet=txMonth(prevM).filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
-  const prevUsage={};
-  stxMonth(prevM).filter(x=>x.type==='out'||x.type==='waste').forEach(x=>{prevUsage[x.itemId]=(prevUsage[x.itemId]||0)+num(x.cost)});
   const uKeys=Object.keys(usage).sort((a,b)=>usage[b].cost-usage[a].cost);
-  const maxCost=uKeys.length?usage[uKeys[0]].cost:0;
+  const maxUCost=uKeys.length?usage[uKeys[0]].cost:0;
   document.getElementById('repMatUsage').innerHTML=uKeys.length?uKeys.map(id=>{
     const it=S.items.find(i=>i.id===id);
     if(!it)return'';
     const u=usage[id];
-    const curPct=rNetV>0?u.cost/rNetV*100:0;
-    const prevPct=(prevNet>0&&prevUsage[id])?prevUsage[id]/prevNet*100:null;
-    let cmp='';
-    if(prevPct!==null){
-      const diff=curPct-prevPct;
-      if(Math.abs(diff)>=3)cmp=`<span style="color:${diff>0?'var(--red)':'#7EDB97'}">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(1)}pp เทียบเดือนก่อน${diff>0?' ⚠️ ใช้/หายเพิ่มผิดปกติ':''}</span>`;
-      else cmp=`<span class="sub">≈ เดือนก่อน (${prevPct.toFixed(1)}%)</span>`;
-    }
+    const pctOfSales=rNetV>0?(u.cost/rNetV*100).toFixed(1)+'% ของยอดขาย':'';
     return `<div class="hbar"><div class="lab"><span>${icatOf(it.cat).ic} ${esc(it.n)} <span class="sub">${u.qty.toFixed(1)} ${esc(it.unit)}${u.waste>0?' · เสีย '+thb(u.waste):''}</span></span><b class="num">${thb(u.cost)}</b></div>
-      <div class="tr"><i style="width:${maxCost?u.cost/maxCost*100:0}%;background:${u.waste>u.cost*0.3?'var(--red)':'var(--gold)'}"></i></div>
-      <div class="mini mt" style="margin-top:3px">${curPct.toFixed(1)}% ของยอดขาย ${cmp}</div></div>`;
+      <div class="tr"><i style="width:${maxUCost?u.cost/maxUCost*100:0}%;background:var(--gold)"></i></div>
+      <div class="mini" style="margin-top:2px">${pctOfSales}</div></div>`;
   }).join(''):'<div class="empty">ยังไม่มีการตัดสต๊อกเดือนนี้</div>';
+
+  /* 🚨 วันที่ควรเช็ค — สแกนทุกวัตถุดิบทุกวันในเดือนนี้ เทียบกับค่าเฉลี่ย+ความแกว่งของตัวมันเอง (30 วันย้อนหลัง)
+     ไม่พึ่งยอดขายทั้งเดือนเป็นตัวหาร จึงไม่แกว่งง่ายเหมือนวิธี %-ต่อ-ยอดขาย เวลาข้อมูลเดือนยังน้อย */
+  const anomalies=[];
+  S.items.forEach(it=>{
+    const st=usageStats(it.id); // avg, sd, n (จำนวนวันที่มีข้อมูลใน 30 วันล่าสุด)
+    if(st.n<5)return; // ข้อมูลน้อยเกินจะฟันธง ข้ามไปก่อน
+    const threshold=st.avg+2*st.sd; // เกิน 2 เท่าส่วนเบี่ยงเบนมาตรฐาน = ผิดปกติทางสถิติ
+    if(threshold<=0)return;
+    const byDay={};
+    S.stx.filter(x=>x.itemId===it.id&&(x.type==='out'||x.type==='waste')&&x.date&&x.date.startsWith(m)).forEach(x=>{
+      if(!byDay[x.date])byDay[x.date]={qty:0,cost:0};
+      byDay[x.date].qty+=num(x.qty);byDay[x.date].cost+=num(x.cost);
+    });
+    Object.keys(byDay).forEach(d=>{
+      const day=byDay[d];
+      if(day.qty>threshold&&day.cost>=50){
+        anomalies.push({date:d,it,qty:day.qty,cost:day.cost,avg:st.avg,ratio:st.avg>0?day.qty/st.avg:0});
+      }
+    });
+  });
+  anomalies.sort((a,b)=>b.cost-a.cost);
+  const anomTop=anomalies.slice(0,10);
+  document.getElementById('repAnomalies').innerHTML=anomTop.length?anomTop.map(a=>{
+    const dd=new Date(a.date+'T00:00').toLocaleDateString('th-TH',{weekday:'short',day:'numeric',month:'short'});
+    return `<div class="row" style="align-items:flex-start;cursor:pointer" onclick="openItemDaily('${a.it.id}')">
+      <div class="dot" style="background:var(--red-soft)">⚠️</div>
+      <div class="mid">
+        <div class="t">${dd} · ${icatOf(a.it.cat).ic} ${esc(a.it.n)}</div>
+        <div class="s">ใช้ ${a.qty.toFixed(1)} ${esc(a.it.unit)} (ปกติเฉลี่ย ${a.avg.toFixed(1)}) — เกิน ${a.ratio.toFixed(1)} เท่า</div>
+      </div>
+      <div class="right"><div class="amt ex">${thb(a.cost)}</div><div class="sub" style="font-size:10px">แตะดูรายวัน →</div></div>
+    </div>`;
+  }).join(''):'<div class="empty">ไม่มีวันไหนใช้ผิดปกติเกินเกณฑ์เดือนนี้ 👍</div>';
   /* ตารางรายวัน */
   const dayset={};
   rm.forEach(t=>dayset[t.date]=1);
