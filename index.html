@@ -16,7 +16,7 @@ const FIREBASE_CONFIG = {
   appId: "1:896579826225:web:f22c4aae176230cc6f5b10"
 };
 </script>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <title>หมูทอดบัญชี — รายรับรายจ่าย + สต๊อก</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,7 +38,7 @@ html,body{height:100%}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.05;
   background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 header,nav,.modal-bg{position:relative;z-index:2}
-body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:76px}
+body{font-family:'Sarabun',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;padding-bottom:calc(108px + env(safe-area-inset-bottom))}
 h1,h2,h3,.num{font-family:'Prompt',sans-serif}
 button{font-family:inherit;cursor:pointer;border:none;background:none;font-size:inherit}
 input,select,textarea{font-family:inherit;font-size:16px;width:100%;padding:11px 12px;border:1.5px solid #2E2E26;border-radius:10px;background:#161613;color:var(--ink)}
@@ -53,7 +53,7 @@ header .wrap{display:flex;align-items:center;justify-content:space-between}
 .logo small{display:block;font-family:'Sarabun';font-weight:400;font-size:11px;opacity:.65}
 .dbtag{font-size:11px;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.12)}
 .dbtag.on{background:var(--green);color:#fff}
-nav{position:fixed;bottom:0;left:0;right:0;background:#0D0D0B;border-top:1px solid var(--line);z-index:30}
+nav{position:fixed;bottom:0;left:0;right:0;background:#0D0D0B;border-top:1px solid var(--line);z-index:30;padding-bottom:env(safe-area-inset-bottom)}
 nav .wrap{display:flex}
 nav button{flex:1;padding:9px 0 7px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);font-size:11px;font-weight:600}
 nav button .ic{font-size:20px;line-height:1}
@@ -105,7 +105,7 @@ nav button.act{color:var(--cream)}
 .hbar .tr i{display:block;height:100%;border-radius:99px}
 .modal-bg{position:fixed;inset:0;background:rgba(43,33,24,.5);z-index:50;display:none;align-items:flex-end;justify-content:center}
 .modal-bg.show{display:flex}
-.modal{background:#111110;border:1px solid #24241D;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px 26px;max-height:88vh;overflow-y:auto}
+.modal{background:#111110;border:1px solid #24241D;width:100%;max-width:560px;border-radius:20px 20px 0 0;padding:20px 18px calc(26px + env(safe-area-inset-bottom));max-height:88vh;overflow-y:auto}
 .modal h3{font-size:16px;margin-bottom:6px}
 .formula{background:var(--blue-soft);border:1px solid rgba(110,168,255,.18);border-radius:10px;padding:10px 12px;font-size:12.5px;color:#9FC2FF;margin-top:10px;line-height:1.6}
 .tabpage{display:none}.tabpage.show{display:block}
@@ -333,11 +333,16 @@ nav button.act .ic{animation:pop .3s ease}
   </div>
   <div class="card"><h2>รายรับตามช่องทาง</h2><div id="repChannels"><div class="empty">ไม่มีข้อมูล</div></div></div>
   <div class="card"><h2>รายจ่ายตามประเภท</h2><div id="repCats"><div class="empty">ไม่มีข้อมูล</div></div></div>
+  <div class="card">
+    <h2>📦 ใช้วัตถุดิบเดือนนี้ <span class="sub">เรียงจากใช้เยอะสุด</span></h2>
+    <div id="repMatUsage"><div class="empty">ยังไม่มีการตัดสต๊อกเดือนนี้</div></div>
+  </div>
   <div class="card"><h2>ส่งออกข้อมูล</h2>
     <div class="grid2">
       <button class="btn ghost" onclick="exportCSV()">⬇ CSV เดือนนี้</button>
       <button class="btn ghost" onclick="exportJSON()">⬇ สำรองทั้งหมด</button>
     </div>
+    <div class="mt"><button class="btn ghost" onclick="exportStockCSV()" style="width:100%">⬇ CSV วัตถุดิบเดือนนี้ (รับเข้า/เบิกใช้/ของเสีย/ปรับยอด รายตัว)</button></div>
   </div>
 </section>
 
@@ -460,6 +465,17 @@ nav button.act .ic{animation:pop .3s ease}
   <div class="grid2 mt">
     <button class="btn ghost" onclick="closeModal('countModal')">ยกเลิก</button>
     <button class="btn" onclick="saveCount()">บันทึกผลนับ</button>
+  </div>
+</div></div>
+
+<!-- import preview modal -->
+<div class="modal-bg" id="importPreviewModal"><div class="modal">
+  <h3>📂 ไฟล์นี้มีอะไรบ้าง — เช็คก่อนกู้คืน</h3>
+  <div id="impPreview"></div>
+  <div class="alert-item mt">⚠️ กู้คืนจะ<b>ทับข้อมูลปัจจุบันทั้งหมด</b>ทันที ย้อนกลับไม่ได้ ถ้าไม่แน่ใจว่าใช่ไฟล์ที่ต้องการ ให้ยกเลิกแล้วเช็คชื่อไฟล์อีกที</div>
+  <div class="grid2 mt">
+    <button class="btn ghost" onclick="_pendingImport=null;closeModal('importPreviewModal')">ยกเลิก</button>
+    <button class="btn danger" onclick="confirmImport()">ใช่ กู้คืนไฟล์นี้</button>
   </div>
 </div></div>
 
@@ -1104,19 +1120,44 @@ function exportCSV(){
   });
   dl(new Blob(['\ufeff'+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),`mootod_${m}.csv`);
 }
+function exportStockCSV(){
+  const m=document.getElementById('repMonth').value;
+  const rows=[['date','item','category','type','qty','unit','cost','note']];
+  const LAB={in:'รับเข้า',out:'เบิกใช้',waste:'ของเสีย',adj:'ปรับยอด'};
+  stxMonth(m).sort((a,b)=>a.ts-b.ts).forEach(x=>{
+    const it=S.items.find(i=>i.id===x.itemId);
+    rows.push([x.date,it?it.n:x.itemId,it?icatOf(it.cat).n:'',LAB[x.type]||x.type,x.qty,it?it.unit:'',x.cost||'',(x.note||'').replace(/,/g,' ')]);
+  });
+  dl(new Blob(['\ufeff'+rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}),`mootod_stock_${m}.csv`);
+}
 function exportJSON(){dl(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),'mootod_backup_'+today()+'.json')}
 function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click()}
 function importJSON(){document.getElementById('impFile').click()}
+let _pendingImport=null;
 async function doImport(inp){
   const f=inp.files[0];if(!f)return;
-  const d=JSON.parse(await f.text());
-  if(!confirm('กู้คืนจะทับข้อมูลปัจจุบันทั้งหมด แน่ใจ?'))return;
-  S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings};
+  let d;
+  try{d=JSON.parse(await f.text())}catch(e){alert('ไฟล์นี้เปิดไม่ได้ อาจไม่ใช่ไฟล์สำรองที่ถูกต้อง');inp.value='';return}
+  if(!d||typeof d!=='object'||!Array.isArray(d.tx)){alert('ไฟล์นี้ไม่ใช่ไฟล์สำรองของแอปนี้');inp.value='';return}
+  _pendingImport=d;inp.value='';
+  const dates=d.tx.map(t=>t.date).filter(Boolean).sort();
+  const range=dates.length?dates[0]+' ถึง '+dates[dates.length-1]:'ไม่มีข้อมูล';
+  document.getElementById('impPreview').innerHTML=`
+    <div class="row"><div class="mid"><div class="t">ร้าน</div><div class="s">${esc((d.settings&&d.settings.shopName)||'—')}</div></div></div>
+    <div class="row"><div class="mid"><div class="t">รายรับ-รายจ่าย</div><div class="s">${d.tx.length} รายการ · ${range}</div></div></div>
+    <div class="row"><div class="mid"><div class="t">วัตถุดิบในสต๊อก</div><div class="s">${(d.items||[]).length} รายการ</div></div></div>
+    <div class="row"><div class="mid"><div class="t">ประวัติตัดสต๊อก</div><div class="s">${(d.stx||[]).length} รายการ</div></div></div>
+    <div class="row"><div class="mid"><div class="t">ปิดยอดเงินสด</div><div class="s">${(d.cash||[]).length} วัน</div></div></div>`;
+  document.getElementById('importPreviewModal').classList.add('show');
+}
+async function confirmImport(){
+  const d=_pendingImport;if(!d)return;
+  S=d;S.settings={...structuredClone(DEF_SETTINGS),...S.settings};S.cash=S.cash||[];
   if(fsMode){
     await dbSettings();
     for(const col of['tx','items','stx','cash'])for(const o of S[col]||[])await db.collection(col).doc(o.id).set(o);
   }else lsSave();
-  render();alert('กู้คืนแล้ว ✓');
+  _pendingImport=null;closeModal('importPreviewModal');render();alert('กู้คืนแล้ว ✓');
 }
 
 /* ---------------- RENDER ---------------- */
@@ -1279,6 +1320,38 @@ function render(){
   document.getElementById('rNet').textContent=thb(rIn-rGP-rEx);
   document.getElementById('rMat').textContent=thb(rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
   document.getElementById('rWaste').textContent=thb(rs.filter(x=>x.type==='waste').reduce((a,x)=>a+num(x.cost),0));
+  const rMatV=rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
+  const rNetV=rm.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
+  /* สรุปใช้วัตถุดิบเดือนนี้ เรียงจากใช้เยอะสุด + เทียบ % ต่อยอดขายกับเดือนก่อน (จับของหาย/ใช้เปลือง) */
+  const usage={};
+  rs.filter(x=>x.type==='out'||x.type==='waste').forEach(x=>{
+    if(!usage[x.itemId])usage[x.itemId]={qty:0,cost:0,waste:0};
+    usage[x.itemId].qty+=num(x.qty);usage[x.itemId].cost+=num(x.cost);
+    if(x.type==='waste')usage[x.itemId].waste+=num(x.cost);
+  });
+  const [py,pmn]=m.split('-').map(Number);
+  const pd=new Date(py,pmn-2,1),prevM=pd.getFullYear()+'-'+String(pd.getMonth()+1).padStart(2,'0');
+  const prevNet=txMonth(prevM).filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
+  const prevUsage={};
+  stxMonth(prevM).filter(x=>x.type==='out'||x.type==='waste').forEach(x=>{prevUsage[x.itemId]=(prevUsage[x.itemId]||0)+num(x.cost)});
+  const uKeys=Object.keys(usage).sort((a,b)=>usage[b].cost-usage[a].cost);
+  const maxCost=uKeys.length?usage[uKeys[0]].cost:0;
+  document.getElementById('repMatUsage').innerHTML=uKeys.length?uKeys.map(id=>{
+    const it=S.items.find(i=>i.id===id);
+    if(!it)return'';
+    const u=usage[id];
+    const curPct=rNetV>0?u.cost/rNetV*100:0;
+    const prevPct=(prevNet>0&&prevUsage[id])?prevUsage[id]/prevNet*100:null;
+    let cmp='';
+    if(prevPct!==null){
+      const diff=curPct-prevPct;
+      if(Math.abs(diff)>=3)cmp=`<span style="color:${diff>0?'var(--red)':'#7EDB97'}">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(1)}pp เทียบเดือนก่อน${diff>0?' ⚠️ ใช้/หายเพิ่มผิดปกติ':''}</span>`;
+      else cmp=`<span class="sub">≈ เดือนก่อน (${prevPct.toFixed(1)}%)</span>`;
+    }
+    return `<div class="hbar"><div class="lab"><span>${icatOf(it.cat).ic} ${esc(it.n)} <span class="sub">${u.qty.toFixed(1)} ${esc(it.unit)}${u.waste>0?' · เสีย '+thb(u.waste):''}</span></span><b class="num">${thb(u.cost)}</b></div>
+      <div class="tr"><i style="width:${maxCost?u.cost/maxCost*100:0}%;background:${u.waste>u.cost*0.3?'var(--red)':'var(--gold)'}"></i></div>
+      <div class="mini mt" style="margin-top:3px">${curPct.toFixed(1)}% ของยอดขาย ${cmp}</div></div>`;
+  }).join(''):'<div class="empty">ยังไม่มีการตัดสต๊อกเดือนนี้</div>';
   /* ตารางรายวัน */
   const dayset={};
   rm.forEach(t=>dayset[t.date]=1);
@@ -1301,8 +1374,6 @@ function render(){
     const sumP=pls.reduce((a,p)=>a+p.profit,0);
     document.getElementById('repDailySum').innerHTML=`กำไร <b style="color:var(--green)">${win}</b> / เจ๊ง <b style="color:var(--red)">${pls.length-win}</b> จาก ${pls.length} วัน · เฉลี่ย <b style="color:${avgP>=0?'var(--green)':'var(--red)'}">${avgP>=0?'+':'−'}${thb(Math.abs(avgP)).slice(1)}</b>/วัน · รวม <b style="color:${sumP>=0?'var(--green)':'var(--red)'}">${sumP>=0?'+':'−'}${thb(Math.abs(sumP)).slice(1)}</b>`;
   }else document.getElementById('repDailySum').textContent='';
-  const rMatV=rs.filter(x=>x.type==='out'||x.type==='waste').reduce((a,x)=>a+num(x.cost),0);
-  const rNetV=rm.filter(t=>t.type==='in').reduce((a,t)=>a+netAmt(t),0);
   document.getElementById('rCogsLine').innerHTML=(rMatV>0&&rNetV>0)
     ?`📊 COGS จริงเดือนนี้ = ${(rMatV/rNetV*100).toFixed(1)}% ของยอดขายสุทธิ (ตั้งไว้ ${num(S.settings.cogsPct)}%) — ${Math.abs(rMatV/rNetV*100-num(S.settings.cogsPct))>5?'<b style="color:var(--red)">ห่างกันเกิน 5% ไปปรับ % ในตั้งค่า หรือหาสาเหตุของแพง/ของหาย</b>':'ใกล้เคียงกัน ใช้ได้'}`
     :'📊 ยังไม่มีข้อมูลตัดสต๊อกพอจะเทียบ COGS จริงกับ % ที่ตั้งไว้';
