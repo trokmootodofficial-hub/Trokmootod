@@ -414,6 +414,14 @@ nav button.act .ic{animation:pop .3s ease}
   <button data-pg="set" onclick="go('set',this)"><span class="ic">⚙️</span>ตั้งค่า</button>
 </div></nav>
 
+<!-- item daily modal -->
+<div class="modal-bg" id="itemDailyModal"><div class="modal">
+  <h3 id="idTitle">📅 การใช้รายวัน</h3>
+  <div class="mini mt">แต่ละแถวคือ 1 วัน — ใช้ไปกี่หน่วย คิดเป็นกี่บาท เทียบกับยอดขายวันนั้น ถ้าใช้เยอะผิดปกติทั้งที่ขายไม่ได้เพิ่ม ระบบจะเตือนสีแดงให้เอง</div>
+  <div id="idList" class="mt"></div>
+  <div class="mt"><button class="btn ghost" onclick="closeModal('itemDailyModal')" style="width:100%">ปิด</button></div>
+</div></div>
+
 <!-- item modal -->
 <div class="modal-bg" id="itemModal"><div class="modal">
   <h3 id="imTitle">เพิ่มของเข้าระบบสต๊อก</h3>
@@ -814,6 +822,57 @@ async function delTx(id){
   const t=S.tx.find(x=>x.id===id);
   if(!confirm('ลบรายการนี้?'+(t&&t.itemId?' (สต๊อกที่รับเข้าไปแล้วจะไม่ย้อนกลับ — ไปปรับที่หน้าสต๊อกเอง)':'')))return;
   await dbDel('tx',id);render();
+}
+
+/* วันนี้ขายได้เท่าไหร่ (ทุกวันในระบบ ไม่ผูกกับเดือนที่เลือกในหน้ารายงาน) */
+function netSalesOfDate(d){return S.tx.filter(t=>t.date===d&&t.type==='in').reduce((a,t)=>a+netAmt(t),0)}
+function openItemDaily(id){
+  const it=S.items.find(i=>i.id===id);
+  if(!it)return;
+  document.getElementById('idTitle').textContent='📅 '+it.n+' — การใช้รายวัน';
+  const cut=new Date();cut.setDate(cut.getDate()-30);
+  const cutS=cut.toISOString().slice(0,10);
+  // รวมยอดใช้ (out+waste) ต่อวัน ย้อนหลัง 30 วัน
+  const byDay={};
+  S.stx.filter(x=>x.itemId===id&&(x.type==='out'||x.type==='waste')&&x.date>=cutS).forEach(x=>{
+    if(!byDay[x.date])byDay[x.date]={qty:0,cost:0,waste:false};
+    byDay[x.date].qty+=num(x.qty);byDay[x.date].cost+=num(x.cost);
+    if(x.type==='waste')byDay[x.date].waste=true;
+  });
+  const days=Object.keys(byDay).sort().reverse();
+  if(!days.length){
+    document.getElementById('idList').innerHTML='<div class="empty">ยังไม่มีการตัดสต๊อกของรายการนี้ในช่วง 30 วันล่าสุด</div>';
+    document.getElementById('itemDailyModal').classList.add('show');return;
+  }
+  // เกณฑ์ "ปกติ" = สัดส่วนต้นทุนตัวนี้ต่อยอดขาย เฉลี่ยจากทุกวันที่มีข้อมูลจริง
+  let sumCost=0,sumSales=0;
+  days.forEach(d=>{const s=netSalesOfDate(d);if(s>0){sumCost+=byDay[d].cost;sumSales+=s}});
+  const normalPct=sumSales>0?sumCost/sumSales*100:null;
+  document.getElementById('idList').innerHTML=
+    `<div class="day-row" style="border-bottom:2px solid var(--ink);font-size:11px;font-weight:700;color:var(--muted)">
+      <span>วันที่</span><span class="right">ใช้ไป</span><span class="right">คิดเป็น</span><span class="right">ผลเทียบ</span></div>`+
+    days.map(d=>{
+      const u=byDay[d],sales=netSalesOfDate(d);
+      const dd=new Date(d+'T00:00').toLocaleDateString('th-TH',{day:'numeric',month:'short'});
+      let verdict,color;
+      if(sales<=0){verdict='ไม่มียอดขายบันทึก แต่ใช้ของ ⚠️';color='var(--red)'}
+      else if(normalPct===null){verdict='ยังไม่พอเทียบ';color='var(--muted)'}
+      else{
+        const pct=u.cost/sales*100,diff=pct-normalPct;
+        if(Math.abs(diff)<=3){verdict='ปกติ ✓';color='#7EDB97'}
+        else if(diff>3){verdict='ใช้เยอะกว่าปกติ ⚠️';color='var(--red)'}
+        else{verdict='ใช้น้อยกว่าปกติ';color='var(--blue)'}
+      }
+      return `<div class="day-row">
+        <span>${dd}${u.waste?' <span class="sub">🗑</span>':''}</span>
+        <span class="right num">${u.qty.toFixed(1)} ${esc(it.unit)}</span>
+        <span class="right num">${thb(u.cost)}</span>
+        <span class="right" style="color:${color};font-size:12px;font-weight:600">${verdict}</span>
+      </div>
+      <div class="mini" style="text-align:right;margin-top:-4px">ยอดขายวันนั้น ${thb(sales)}</div>`;
+    }).join('')+
+    (normalPct!==null?`<div class="mini mt">เกณฑ์ "ปกติ" คำนวณจากค่าเฉลี่ยจริงของรายการนี้ = ${normalPct.toFixed(1)}% ของยอดขายแต่ละวัน</div>`:'');
+  document.getElementById('itemDailyModal').classList.add('show');
 }
 
 /* ---------------- STOCK ---------------- */
@@ -1302,9 +1361,10 @@ function render(){
       </div>
       <div class="right" style="flex-shrink:0">
         <div class="num" style="font-size:19px;font-weight:600">${it.qty}<span class="sub" style="font-size:11px"> ${esc(it.unit)}</span></div>
-        <div style="display:flex;gap:6px;margin-top:6px">
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
           <button class="btn sm ghost" onclick="openItemModal('${it.id}')">แก้ไข</button>
           <button class="btn sm" onclick="openUse('${it.id}')">ตัดสต๊อก</button>
+          <button class="btn sm ghost" onclick="openItemDaily('${it.id}')">📅 รายวัน</button>
         </div>
       </div></div>`;
   }).join(''):'<div class="empty">ไม่มีรายการในหมวดนี้</div>';
